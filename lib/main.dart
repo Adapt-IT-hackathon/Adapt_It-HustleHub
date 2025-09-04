@@ -259,7 +259,7 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateMixin {
+class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -270,8 +270,6 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
   final picker = ImagePicker();
 
   String _selectedRole = "Service Provider"; // default
-  RangeValues _priceRange = const RangeValues(200, 1500);
-
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -289,33 +287,6 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
   ];
 
   final Set<String> _selectedSkills = {};
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
-    );
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
 
   Future<void> _pickImage() async {
     final pickedFile = await picker.pickImage(
@@ -383,316 +354,207 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1976D2), Color(0xFF42A5F5), Colors.white],
-            stops: [0.1, 0.4, 0.4],
-          ),
-        ),
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              "Create Your Account",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1976D2),
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              "Join our community of local professionals",
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF1976D2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Profile Picture Upload
+            Stack(
               children: [
-                // Header
-                const Text(
-                  "Create Your Account",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  "Join our community of local professionals",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Profile Picture Upload
-                Stack(
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Colors.grey.shade100,
-                        backgroundImage:
-                        _profileImage != null ? FileImage(_profileImage!) : null,
-                        child: _profileImage == null
-                            ? const Icon(Icons.person,
-                            size: 50, color: Color(0xFF1976D2))
-                            : null,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _pickImage,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1976D2),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Form Container
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.shade100,
-                        blurRadius: 15,
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  child: Column(
+                  child: CircleAvatar(
+                    radius: 55,
+                    backgroundColor: Colors.grey.shade100,
+                    backgroundImage:
+                        _profileImage != null ? FileImage(_profileImage!) : null,
+                    child: _profileImage == null
+                        ? const Icon(Icons.person,
+                            size: 50, color: Color(0xFF1976D2))
+                        : null,
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1976D2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Form Container
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.shade100,
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Name and Surname Row
+                  Row(
                     children: [
-                      // Name and Surname Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _nameController,
-                              decoration: InputDecoration(
-                                labelText: "First Name",
-                                labelStyle: const TextStyle(color: Color(0xFF1976D2)),
-                                prefixIcon: const Icon(Icons.person, color: Color(0xFF1976D2)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: TextField(
-                              controller: _surnameController,
-                              decoration: InputDecoration(
-                                labelText: "Surname",
-                                labelStyle: const TextStyle(color: Color(0xFF1976D2)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Expanded(
+                        child: _buildTextField(_nameController, "First Name", Icons.person),
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: _buildTextField(_surnameController, "Surname", Icons.person_outline),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(_emailController, "Email", Icons.email, TextInputType.emailAddress),
+                  const SizedBox(height: 15),
+                  _buildPasswordField(_passwordController, "Password", _obscurePassword, () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  }),
+                  const SizedBox(height: 15),
+                  _buildPasswordField(_confirmPasswordController, "Confirm Password", _obscureConfirm, () {
+                    setState(() {
+                      _obscureConfirm = !_obscureConfirm;
+                    });
+                  }),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _forgotPassword,
+                      child: const Text(
+                        "Forgot Password?",
+                        style: TextStyle(color: Color(0xFF1976D2)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-                      // Email
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: "Email",
-                          labelStyle: const TextStyle(color: Color(0xFF1976D2)),
-                          prefixIcon: const Icon(Icons.email, color: Color(0xFF1976D2)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2)),
+                  // Role selection
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "I want to join as a:",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1976D2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text("Service Provider"),
+                          selected: _selectedRole == "Service Provider",
+                          selectedColor: const Color(0xFF1976D2),
+                          labelStyle: TextStyle(
+                            color: _selectedRole == "Service Provider"
+                                ? Colors.white
+                                : const Color(0xFF1976D2),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-                          ),
+                          onSelected: (_) {
+                            setState(() => _selectedRole = "Service Provider");
+                          },
                         ),
                       ),
-                      const SizedBox(height: 15),
-
-                      // Password
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: "Password",
-                          labelStyle: const TextStyle(color: Color(0xFF1976D2)),
-                          prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                              color: const Color(0xFF1976D2),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text("Client"),
+                          selected: _selectedRole == "Client",
+                          selectedColor: const Color(0xFF1976D2),
+                          labelStyle: TextStyle(
+                            color: _selectedRole == "Client"
+                                ? Colors.white
+                                : const Color(0xFF1976D2),
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-                          ),
+                          onSelected: (_) {
+                            setState(() => _selectedRole = "Client");
+                          },
                         ),
                       ),
-                      const SizedBox(height: 15),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
-                      // Confirm Password
-                      TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscureConfirm,
-                        decoration: InputDecoration(
-                          labelText: "Confirm Password",
-                          labelStyle: const TextStyle(color: Color(0xFF1976D2)),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1976D2)),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirm ? Icons.visibility : Icons.visibility_off,
-                              color: const Color(0xFF1976D2),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureConfirm = !_obscureConfirm;
-                              });
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-                          ),
-                        ),
+                  // Skills
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Select Your Skills",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1976D2),
                       ),
-                      const SizedBox(height: 8),
-
-                      // Forgot password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _forgotPassword,
-                          child: const Text(
-                            "Forgot Password?",
-                            style: TextStyle(color: Color(0xFF1976D2)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Role selection
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "I want to join as a:",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1976D2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Text("Service Provider"),
-                              selected: _selectedRole == "Service Provider",
-                              selectedColor: const Color(0xFF1976D2),
-                              labelStyle: TextStyle(
-                                color: _selectedRole == "Service Provider"
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              onSelected: (_) {
-                                setState(() => _selectedRole = "Service Provider");
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Text("Client"),
-                              selected: _selectedRole == "Client",
-                              selectedColor: const Color(0xFF1976D2),
-                              labelStyle: TextStyle(
-                                color: _selectedRole == "Client"
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              onSelected: (_) {
-                                setState(() => _selectedRole = "Client");
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Skills
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Select Your Skills",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1976D2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  IgnorePointer(
+                    ignoring: _selectedRole == "Client",
+                    child: Opacity(
+                      opacity: _selectedRole == "Client" ? 0.4 : 1,
+                      child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: _skills.map((skill) {
@@ -704,81 +566,113 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                             checkmarkColor: Colors.white,
                             labelStyle: TextStyle(
                               color: isSelected ? Colors.white : const Color(0xFF1976D2),
-                              fontWeight: FontWeight.w500,
                             ),
                             onSelected: (_) => _toggleSkill(skill),
                             backgroundColor: Colors.blue.shade50,
-                            showCheckmark: true,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isSelected ? const Color(0xFF1976D2) : Colors.grey.shade300,
-                                width: 1,
-                              ),
-                            ),
                           );
                         }).toList(),
                       ),
-                      const SizedBox(height: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-                     
+                  // Submit button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1976D2),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 5,
+                        shadowColor: Colors.blue.shade200,
+                      ),
+                      child: const Text(
+                        "Sign Up",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
 
-                      // Submit button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1976D2),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 5,
-                            shadowColor: Colors.blue.shade200,
-                          ),
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
+                  // Login link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Already have an account?"),
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Navigate to LoginPage
+                        },
+                        child: const Text(
+                          "Log In",
+                          style: TextStyle(
+                            color: Color(0xFF1976D2),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-
-                      // Login link
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Already have an account?"),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_)=>LoginPage()));
-                            },
-                            child: const Text(
-                              "Log In",
-                              style: TextStyle(
-                                color: Color(0xFF1976D2),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
   }
+
+  // Helpers
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+      [TextInputType inputType = TextInputType.text]) {
+    return TextField(
+      controller: controller,
+      keyboardType: inputType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField(TextEditingController controller, String label,
+      bool obscureText, VoidCallback onToggle) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscureText ? Icons.visibility : Icons.visibility_off,
+            color: const Color(0xFF1976D2),
+          ),
+          onPressed: onToggle,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
+        ),
+      ),
+    );
+  }
+
 }
 
 
