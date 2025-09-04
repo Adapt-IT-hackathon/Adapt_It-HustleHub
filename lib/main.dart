@@ -671,72 +671,12 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
-
-  Widget _buildPasswordField(TextEditingController controller, String label,
-      bool obscureText, VoidCallback onToggle) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
-        suffixIcon: IconButton(
-          icon: Icon(
-            obscureText ? Icons.visibility : Icons.visibility_off,
-            color: const Color(0xFF1976D2),
-                  // Login link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account?"),
-                      TextButton(
-  onPressed: () {
-    // Navigate to your existing LoginPage
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-  },
-  child: const Text(
-    "Log In",
-    style: TextStyle(
-      color: Color(0xFF1976D2),
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Helpers
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      [TextInputType inputType = TextInputType.text]) {
-    return TextField(
-      controller: controller,
-      keyboardType: inputType,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField(TextEditingController controller, String label,
-      bool obscureText, VoidCallback onToggle) {
+  Widget _buildPasswordField(
+      TextEditingController controller,
+      String label,
+      bool obscureText,
+      VoidCallback onToggle,
+      ) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -748,7 +688,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
             obscureText ? Icons.visibility : Icons.visibility_off,
             color: const Color(0xFF1976D2),
           ),
-          onPressed: onToggle,
+          onPressed: onToggle, // <- Required parameter added
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
@@ -758,6 +698,10 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
+
+
+  // Helpers
+
 
 }
 
