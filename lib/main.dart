@@ -281,13 +281,12 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _otherSkillController = TextEditingController();
 
   File? _profileImage;
   final picker = ImagePicker();
 
   String _selectedRole = "Service Provider"; // default
-  RangeValues _priceRange = const RangeValues(200, 1500);
-
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -301,17 +300,15 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
     "Tutoring",
     "Cleaning",
     "Carpentry",
-    "Delivery"
+    "Delivery",
+    "Other"
   ];
 
   final Set<String> _selectedSkills = {};
+  bool _showOtherSkillField = false;
 
   Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
-
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _profileImage = File(pickedFile.path);
@@ -320,6 +317,16 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
   }
 
   void _toggleSkill(String skill) {
+    if (skill == "Other") {
+      setState(() {
+        _showOtherSkillField = !_showOtherSkillField;
+        if (!_showOtherSkillField) {
+          _otherSkillController.clear();
+        }
+      });
+      return;
+    }
+
     setState(() {
       if (_selectedSkills.contains(skill)) {
         _selectedSkills.remove(skill);
@@ -338,6 +345,11 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
         ),
       );
       return;
+    }
+
+    // If user added a custom skill, include it
+    if (_showOtherSkillField && _otherSkillController.text.isNotEmpty) {
+      _selectedSkills.add(_otherSkillController.text.trim());
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -596,8 +608,46 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                         }).toList(),
                       ),
                       const SizedBox(height: 20),
+  Widget _buildSkillsSelection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Select Your Skills", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2))),
+          const SizedBox(height: 10),
+          IgnorePointer(
+            ignoring: _selectedRole == "Client",
+            child: Opacity(
+              opacity: _selectedRole == "Client" ? 0.4 : 1,
+              child: Column(
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _skills.map((skill) {
+                      final bool isSelected = _selectedSkills.contains(skill);
+                      return FilterChip(
+                        label: Text(skill),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF1976D2),
+                        checkmarkColor: Colors.white,
+                        labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2)),
+                        onSelected: (_) => _toggleSkill(skill),
+                        backgroundColor: Colors.blue.shade50,
+                      );
+                    }).toList(),
+                  ),
+                  if (_showOtherSkillField)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: _buildTextField(_otherSkillController, "Enter your skill", Icons.star),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
 
-                     
+
 
                       // Submit button
                       SizedBox(
@@ -624,6 +674,20 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                         ),
                       ),
                       const SizedBox(height: 10),
+  Widget _buildSignUpButton() => SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1976D2),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 5,
+            shadowColor: Colors.blue.shade200,
+          ),
+          child: const Text("Sign Up", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+        ),
+      );
 
                   // Login link
                   Row(
@@ -653,19 +717,31 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
+  Widget _buildLoginLink() => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("Already have an account?"),
+          TextButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+            },
+            child: const Text("Log In", style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600)),
+          ),
+        ],
+      );
 
-  // Helpers
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      [TextInputType inputType = TextInputType.text]) {
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType inputType = TextInputType.text]) {
     return TextField(
       controller: controller,
       keyboardType: inputType,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.blue.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
         ),
       ),
@@ -688,7 +764,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
             obscureText ? Icons.visibility : Icons.visibility_off,
             color: const Color(0xFF1976D2),
           ),
-          onPressed: onToggle, // <- Required parameter added
+          onPressed: onToggle,
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
@@ -698,10 +774,6 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
-
-
-  // Helpers
-
 
 }
 
@@ -1645,9 +1717,9 @@ class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
 
-  RangeValues _priceRange = const RangeValues(200, 1500);
+
   bool _isEditing = false;
-  bool _otherSkillSelected = false;
+  final bool _otherSkillSelected = false;
 
   final List<String> _skills = [
     "Washing", "Gardening", "Painting", "Plumbing", "Electrical",
@@ -2012,41 +2084,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Price Range
-                    const Text(
-                      "Price Range (R)",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    RangeSlider(
-                      values: _priceRange,
-                      min: 200,
-                      max: 1500,
-                      divisions: 13,
-                      activeColor: const Color(0xFF1976D2),
-                      inactiveColor: Colors.blue.shade100,
-                      labels: RangeLabels(
-                        "R${_priceRange.start.round()}",
-                        "R${_priceRange.end.round()}",
-                      ),
-                      onChanged: _isEditing ? (values) {
-                        setState(() {
-                          _priceRange = values;
-                        });
-                      } : null,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text("R200", style: TextStyle(color: Color(0xFF1976D2))),
-                        Text("R1500", style: TextStyle(color: Color(0xFF1976D2))),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+        
 
                     // Stats/Reviews Section
                     const Text(
