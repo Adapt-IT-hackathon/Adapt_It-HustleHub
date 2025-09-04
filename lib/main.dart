@@ -4378,7 +4378,7 @@ class WorkerProfilePage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text(
-                  'Contact Worker',
+                  'View Contact Details',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
