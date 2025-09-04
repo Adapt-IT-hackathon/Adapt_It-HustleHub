@@ -738,8 +738,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       ),
     );
 
-    // TODO: Navigate to the correct dashboard
-    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => dashboardWidget));
+        if(_selectedRole == "Service Provider"){
+          Navigator.push(context, MaterialPageRoute(builder: (_)=>ClientDashboard()));
+        }else if(_selectedRole == "Client"){
+            Navigator.push(context, MaterialPageRoute(builder: (_)=>ServiceDashboard()));
+          }
   }
 
   void _forgotPassword() {
