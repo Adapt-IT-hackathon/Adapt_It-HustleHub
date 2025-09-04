@@ -721,44 +721,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 20),
 
-                      // Price Range
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Set Your Price Range (R)",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1976D2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      RangeSlider(
-                        values: _priceRange,
-                        min: 200,
-                        max: 1500,
-                        divisions: 13,
-                        activeColor: const Color(0xFF1976D2),
-                        inactiveColor: Colors.blue.shade100,
-                        labels: RangeLabels(
-                          "R${_priceRange.start.round()}",
-                          "R${_priceRange.end.round()}",
-                        ),
-                        onChanged: (values) {
-                          setState(() {
-                            _priceRange = values;
-                          });
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text("R200", style: TextStyle(color: Color(0xFF1976D2))),
-                          Text("R1500", style: TextStyle(color: Color(0xFF1976D2))),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                     
 
                       // Submit button
                       SizedBox(
@@ -1274,8 +1237,8 @@ class ClientDashboard extends StatefulWidget {
 
 class _ClientDashboardState extends State<ClientDashboard> {
   int _currentIndex = 0;
-  double _userRating = 4.7; // Example rating
-  int _completedJobs = 12; // Example completed jobs
+  final double _userRating = 4.7; // Example rating
+  final int _completedJobs = 12; // Example completed jobs
 
   @override
   Widget build(BuildContext context) {
@@ -1838,18 +1801,19 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _linkedInController = TextEditingController();
   final TextEditingController _githubController = TextEditingController();
   final TextEditingController _otherSocialController = TextEditingController();
-
+  final TextEditingController _otherSkillController = TextEditingController();
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
 
   RangeValues _priceRange = const RangeValues(200, 1500);
   bool _isEditing = false;
+  bool _otherSkillSelected = false;
 
   final List<String> _skills = [
     "Washing", "Gardening", "Painting", "Plumbing", "Electrical",
-    "Cooking", "Tutoring", "Cleaning", "Carpentry", "Delivery"
+    "Cooking", "Tutoring", "Cleaning", "Carpentry", "Delivery",
+    "Other"
   ];
-
   final Set<String> _selectedSkills = {};
 
   @override
@@ -2474,7 +2438,7 @@ class _JobsPageState extends State<JobsPage> {
                       label: Text(skill),
                       backgroundColor: const Color(0xFF1976D2),
                       labelStyle: const TextStyle(color: Colors.white),
-                    )).toList(),
+                    )),
                   ],
                 ),
               ),
@@ -3535,9 +3499,9 @@ class ServiceDashboard extends StatefulWidget {
 
 class _ServiceDashboardState extends State<ServiceDashboard> {
   int _currentIndex = 0;
-  double _serviceRating = 4.8; // Example rating for service provider
-  int _activeJobs = 5; // Example active jobs
-  int _completedJobs = 23; // Example completed jobs
+  final double _serviceRating = 4.8; // Example rating for service provider
+  final int _activeJobs = 5; // Example active jobs
+  final int _completedJobs = 23; // Example completed jobs
 
   @override
   Widget build(BuildContext context) {
@@ -4052,7 +4016,7 @@ class _AddJobPageState extends State<AddJobPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedJobType,
+                initialValue: _selectedJobType,
                 decoration: const InputDecoration(
                   labelText: 'Job Type',
                   border: OutlineInputBorder(),
@@ -4160,7 +4124,7 @@ class WorkerSearchPage extends StatefulWidget {
 
 class _WorkerSearchPageState extends State<WorkerSearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _workers = [
+  final List<Map<String, dynamic>> _workers = [
     {
       'name': 'John Doe',
       'skills': ['Plumbing', 'Electrical'],
@@ -4389,11 +4353,6 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
 
 // Update the Worker Card to make name clickable
 class _WorkerCard extends StatelessWidget {
