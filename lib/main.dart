@@ -268,6 +268,7 @@ class _IntroductionPageState extends State<IntroductionPage> {
 }
 
 
+
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -275,7 +276,7 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateMixin {
+class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -320,9 +321,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
     if (skill == "Other") {
       setState(() {
         _showOtherSkillField = !_showOtherSkillField;
-        if (!_showOtherSkillField) {
-          _otherSkillController.clear();
-        }
+        if (!_showOtherSkillField) _otherSkillController.clear();
       });
       return;
     }
@@ -347,7 +346,6 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       return;
     }
 
-    // If user added a custom skill, include it
     if (_showOtherSkillField && _otherSkillController.text.isNotEmpty) {
       _selectedSkills.add(_otherSkillController.text.trim());
     }
@@ -375,10 +373,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       appBar: AppBar(
         title: const Text(
           "Join HustleHub",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1976D2),
         elevation: 0,
@@ -392,22 +387,16 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
             const Text(
               "Create Your Account",
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1976D2),
-              ),
+                  fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1976D2)),
             ),
             const SizedBox(height: 5),
             const Text(
               "Join our community of local professionals",
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1976D2),
-              ),
+              style: TextStyle(fontSize: 14, color: Color(0xFF1976D2)),
             ),
             const SizedBox(height: 20),
 
-            // Profile Picture Upload
+            // Profile Picture
             Stack(
               children: [
                 Container(
@@ -428,11 +417,9 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                   child: CircleAvatar(
                     radius: 55,
                     backgroundColor: Colors.grey.shade100,
-                    backgroundImage:
-                        _profileImage != null ? FileImage(_profileImage!) : null,
+                    backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
                     child: _profileImage == null
-                        ? const Icon(Icons.person,
-                            size: 50, color: Color(0xFF1976D2))
+                        ? const Icon(Icons.person, size: 50, color: Color(0xFF1976D2))
                         : null,
                   ),
                 ),
@@ -449,11 +436,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 18,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
                     ),
                   ),
                 ),
@@ -477,7 +460,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
               ),
               child: Column(
                 children: [
-                  // Name and Surname Row
+                  // Name & Surname
                   Row(
                     children: [
                       Expanded(
@@ -493,39 +476,28 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                   _buildTextField(_emailController, "Email", Icons.email, TextInputType.emailAddress),
                   const SizedBox(height: 15),
                   _buildPasswordField(_passwordController, "Password", _obscurePassword, () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
+                    setState(() => _obscurePassword = !_obscurePassword);
                   }),
                   const SizedBox(height: 15),
                   _buildPasswordField(_confirmPasswordController, "Confirm Password", _obscureConfirm, () {
-                    setState(() {
-                      _obscureConfirm = !_obscureConfirm;
-                    });
+                    setState(() => _obscureConfirm = !_obscureConfirm);
                   }),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: _forgotPassword,
-                      child: const Text(
-                        "Forgot Password?",
-                        style: TextStyle(color: Color(0xFF1976D2)),
-                      ),
+                      child: const Text("Forgot Password?", style: TextStyle(color: Color(0xFF1976D2))),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Role selection
+                  // Role
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "I want to join as a:",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1976D2),
-                      ),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -538,13 +510,8 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                           selected: _selectedRole == "Service Provider",
                           selectedColor: const Color(0xFF1976D2),
                           labelStyle: TextStyle(
-                            color: _selectedRole == "Service Provider"
-                                ? Colors.white
-                                : const Color(0xFF1976D2),
-                          ),
-                          onSelected: (_) {
-                            setState(() => _selectedRole = "Service Provider");
-                          },
+                              color: _selectedRole == "Service Provider" ? Colors.white : const Color(0xFF1976D2)),
+                          onSelected: (_) => setState(() => _selectedRole = "Service Provider"),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -554,160 +521,26 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                           selected: _selectedRole == "Client",
                           selectedColor: const Color(0xFF1976D2),
                           labelStyle: TextStyle(
-                            color: _selectedRole == "Client"
-                                ? Colors.white
-                                : const Color(0xFF1976D2),
-                          ),
-                          onSelected: (_) {
-                            setState(() => _selectedRole = "Client");
-                          },
+                              color: _selectedRole == "Client" ? Colors.white : const Color(0xFF1976D2)),
+                          onSelected: (_) => setState(() => _selectedRole = "Client"),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
 
-                      // Skills
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Select Your Skills",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1976D2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _skills.map((skill) {
-                          final bool isSelected = _selectedSkills.contains(skill);
-                          return FilterChip(
-                            label: Text(skill),
-                            selected: isSelected,
-                            selectedColor: const Color(0xFF1976D2),
-                            checkmarkColor: Colors.white,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF1976D2),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            onSelected: (_) => _toggleSkill(skill),
-                            backgroundColor: Colors.blue.shade50,
-                            showCheckmark: true,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isSelected ? const Color(0xFF1976D2) : Colors.grey.shade300,
-                                width: 1,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
-  Widget _buildSkillsSelection() => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Select Your Skills", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2))),
-          const SizedBox(height: 10),
-          IgnorePointer(
-            ignoring: _selectedRole == "Client",
-            child: Opacity(
-              opacity: _selectedRole == "Client" ? 0.4 : 1,
-              child: Column(
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _skills.map((skill) {
-                      final bool isSelected = _selectedSkills.contains(skill);
-                      return FilterChip(
-                        label: Text(skill),
-                        selected: isSelected,
-                        selectedColor: const Color(0xFF1976D2),
-                        checkmarkColor: Colors.white,
-                        labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2)),
-                        onSelected: (_) => _toggleSkill(skill),
-                        backgroundColor: Colors.blue.shade50,
-                      );
-                    }).toList(),
-                  ),
-                  if (_showOtherSkillField)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: _buildTextField(_otherSkillController, "Enter your skill", Icons.star),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
+                  // Skills
+                  _buildSkillsSelection(),
 
+                  const SizedBox(height: 20),
 
+                  // Sign Up Button
+                  _buildSignUpButton(),
 
-                      // Submit button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1976D2),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 5,
-                            shadowColor: Colors.blue.shade200,
-                          ),
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-  Widget _buildSignUpButton() => SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: _submit,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1976D2),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            elevation: 5,
-            shadowColor: Colors.blue.shade200,
-          ),
-          child: const Text("Sign Up", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
-        ),
-      );
+                  const SizedBox(height: 10),
 
-                  // Login link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account?"),
-                      TextButton(
-                        onPressed: () {
-                          // TODO: Navigate to LoginPage
-                        },
-                        child: const Text(
-                          "Log In",
-                          style: TextStyle(
-                            color: Color(0xFF1976D2),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Login Link
+                  _buildLoginLink(),
                 ],
               ),
             ),
@@ -717,20 +550,92 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
-  Widget _buildLoginLink() => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text("Already have an account?"),
-          TextButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage()));
-            },
-            child: const Text("Log In", style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600)),
-          ),
-        ],
-      );
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType inputType = TextInputType.text]) {
+  Widget _buildSkillsSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Select Your Skills",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
+        ),
+        const SizedBox(height: 10),
+        IgnorePointer(
+          ignoring: _selectedRole == "Client",
+          child: Opacity(
+            opacity: _selectedRole == "Client" ? 0.4 : 1,
+            child: Column(
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _skills.map((skill) {
+                    final bool isSelected = _selectedSkills.contains(skill);
+                    return FilterChip(
+                      label: Text(skill),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFF1976D2),
+                      checkmarkColor: Colors.white,
+                      labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2)),
+                      onSelected: (_) => _toggleSkill(skill),
+                      backgroundColor: Colors.blue.shade50,
+                    );
+                  }).toList(),
+                ),
+                if (_showOtherSkillField)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: _buildTextField(_otherSkillController, "Enter your skill", Icons.star),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignUpButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1976D2),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 5,
+          shadowColor: Colors.blue.shade200,
+        ),
+        child: const Text(
+          "Sign Up",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text("Already have an account?"),
+        TextButton(
+          onPressed: () {
+            // Navigate to login page (replace with your LoginPage)
+            Navigator.push(context, MaterialPageRoute(builder: (_)=>LoginPage()));
+          },
+          child: const Text(
+            "Log In",
+            style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+      [TextInputType inputType = TextInputType.text]) {
     return TextField(
       controller: controller,
       keyboardType: inputType,
@@ -747,12 +652,8 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
-  Widget _buildPasswordField(
-      TextEditingController controller,
-      String label,
-      bool obscureText,
-      VoidCallback onToggle,
-      ) {
+
+  Widget _buildPasswordField(TextEditingController controller, String label, bool obscureText, VoidCallback onToggle) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -760,10 +661,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
         labelText: label,
         prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
         suffixIcon: IconButton(
-          icon: Icon(
-            obscureText ? Icons.visibility : Icons.visibility_off,
-            color: const Color(0xFF1976D2),
-          ),
+          icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF1976D2)),
           onPressed: onToggle,
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -774,9 +672,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
       ),
     );
   }
-
 }
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
