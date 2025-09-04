@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -681,7 +682,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -713,10 +715,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _login() {
+  // 🔑 Firebase login
+  void _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -727,22 +732,49 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       return;
     }
 
-    String dashboard = _selectedRole == "Service Provider"
-        ? "ClientDashboard"
-        : "ServiceDashboard";
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("✅ Login successful as $_selectedRole!"),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Login successful as $_selectedRole!"),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
 
-        if(_selectedRole == "Service Provider"){
-          Navigator.push(context, MaterialPageRoute(builder: (_)=>ClientDashboard()));
-        }else if(_selectedRole == "Client"){
-            Navigator.push(context, MaterialPageRoute(builder: (_)=>ServiceDashboard()));
-          }
+      // Navigate based on role
+      if (_selectedRole == "Service Provider") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ServiceDashboard()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ClientDashboard()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+      if (e.code == 'user-not-found') {
+        message = "No user found for that email.";
+      } else if (e.code == 'wrong-password') {
+        message = "Incorrect password.";
+      } else {
+        message = "⚠️ ${e.message}";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _forgotPassword() {
@@ -765,7 +797,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Header
               const Text(
                 "Sign In to HustleHub",
                 style: TextStyle(
@@ -879,9 +910,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 ),
                 child: Column(
                   children: [
-                    _buildTextField(_emailController, "Email Address", Icons.email),
+                    _buildTextField(
+                        _emailController, "Email Address", Icons.email),
                     const SizedBox(height: 16),
-                    _buildPasswordField(_passwordController, "Password", _obscurePassword, () {
+                    _buildPasswordField(
+                        _passwordController, "Password", _obscurePassword, () {
                       setState(() => _obscurePassword = !_obscurePassword);
                     }),
                     const SizedBox(height: 12),
@@ -909,7 +942,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           onPressed: _forgotPassword,
                           child: const Text(
                             "Forgot Password?",
-                            style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: Color(0xFF1976D2),
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -922,13 +957,17 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1976D2),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                           elevation: 5,
                           shadowColor: Colors.blue.shade200,
                         ),
                         child: Text(
                           "Login as $_selectedRole",
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
                         ),
                       ),
                     ),
@@ -944,11 +983,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   const Text("Don't have an account?"),
                   TextButton(
                     onPressed: () {
-                      // Navigate to SignUpPage
+                      // TODO: Navigate to SignUpPage
                     },
                     child: const Text(
                       "Sign Up",
-                      style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: Color(0xFF1976D2),
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -960,7 +1001,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon) => TextField(
+  Widget _buildTextField(
+          TextEditingController controller, String label, IconData icon) =>
+      TextField(
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
@@ -970,24 +1013,78 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
+            borderSide:
+                const BorderSide(color: Color(0xFF1976D2), width: 2),
           ),
         ),
       );
 
-  Widget _buildPasswordField(TextEditingController controller, String label, bool obscureText, VoidCallback onToggle) => TextField(
+  Widget _buildPasswordField(TextEditingController controller, String label,
+          bool obscureText, VoidCallback onToggle) =>
+      TextField(
         controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
-          suffixIcon: IconButton(icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF1976D2)), onPressed: onToggle),
+          suffixIcon: IconButton(
+              icon: Icon(
+                  obscureText ? Icons.visibility : Icons.visibility_off,
+                  color: const Color(0xFF1976D2)),
+              onPressed: onToggle),
           filled: true,
           fillColor: Colors.blue.shade50,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide:
+                  const BorderSide(color: Color(0xFF1976D2), width: 2)),
         ),
       );
+}
+
+// Small role option widget
+class _RoleOption extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RoleOption(
+      {required this.title,
+      required this.icon,
+      required this.isSelected,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade100 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isSelected ? Colors.blue : Colors.grey.shade300, width: 2),
+        ),
+        child: Column(
+          children: [
+            Icon(icon,
+                size: 28,
+                color: isSelected ? Colors.blue : Colors.grey.shade600),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey.shade600,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _RoleOption extends StatelessWidget {
