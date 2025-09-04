@@ -270,6 +270,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final picker = ImagePicker();
 
   String _selectedRole = "Service Provider"; // default
+  final RangeValues _priceRange = const RangeValues(200, 1500);
+
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -1619,9 +1621,9 @@ class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
 
-  RangeValues _priceRange = const RangeValues(200, 1500);
+
   bool _isEditing = false;
-  bool _otherSkillSelected = false;
+  final bool _otherSkillSelected = false;
 
   final List<String> _skills = [
     "Washing", "Gardening", "Painting", "Plumbing", "Electrical",
@@ -1986,41 +1988,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Price Range
-                    const Text(
-                      "Price Range (R)",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    RangeSlider(
-                      values: _priceRange,
-                      min: 200,
-                      max: 1500,
-                      divisions: 13,
-                      activeColor: const Color(0xFF1976D2),
-                      inactiveColor: Colors.blue.shade100,
-                      labels: RangeLabels(
-                        "R${_priceRange.start.round()}",
-                        "R${_priceRange.end.round()}",
-                      ),
-                      onChanged: _isEditing ? (values) {
-                        setState(() {
-                          _priceRange = values;
-                        });
-                      } : null,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text("R200", style: TextStyle(color: Color(0xFF1976D2))),
-                        Text("R1500", style: TextStyle(color: Color(0xFF1976D2))),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+        
 
                     // Stats/Reviews Section
                     const Text(
