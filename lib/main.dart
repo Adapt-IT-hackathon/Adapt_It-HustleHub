@@ -265,13 +265,12 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _otherSkillController = TextEditingController();
 
   File? _profileImage;
   final picker = ImagePicker();
 
   String _selectedRole = "Service Provider"; // default
-  final RangeValues _priceRange = const RangeValues(200, 1500);
-
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -285,17 +284,15 @@ class _SignUpPageState extends State<SignUpPage> {
     "Tutoring",
     "Cleaning",
     "Carpentry",
-    "Delivery"
+    "Delivery",
+    "Other"
   ];
 
   final Set<String> _selectedSkills = {};
+  bool _showOtherSkillField = false;
 
   Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
-
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _profileImage = File(pickedFile.path);
@@ -304,6 +301,16 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _toggleSkill(String skill) {
+    if (skill == "Other") {
+      setState(() {
+        _showOtherSkillField = !_showOtherSkillField;
+        if (!_showOtherSkillField) {
+          _otherSkillController.clear();
+        }
+      });
+      return;
+    }
+
     setState(() {
       if (_selectedSkills.contains(skill)) {
         _selectedSkills.remove(skill);
@@ -316,370 +323,277 @@ class _SignUpPageState extends State<SignUpPage> {
   void _submit() {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("❌ Passwords do not match"),
-          backgroundColor: Colors.redAccent,
-        ),
+        const SnackBar(content: Text("❌ Passwords do not match"), backgroundColor: Colors.redAccent),
       );
       return;
     }
 
+    // If user added a custom skill, include it
+    if (_showOtherSkillField && _otherSkillController.text.isNotEmpty) {
+      _selectedSkills.add(_otherSkillController.text.trim());
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("✅ Sign Up Successful!"),
-        backgroundColor: Colors.green.shade700,
-      ),
+      SnackBar(content: const Text("✅ Sign Up Successful!"), backgroundColor: Colors.green.shade700),
     );
   }
 
   void _forgotPassword() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("📧 Password reset link sent to your email"),
-        backgroundColor: Color(0xFF1976D2),
-      ),
+      const SnackBar(content: Text("📧 Password reset link sent to your email"), backgroundColor: Color(0xFF1976D2)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
-        title: const Text(
-          "Join HustleHub",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
+        title: const Text("Join HustleHub", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
         backgroundColor: const Color(0xFF1976D2),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text(
-              "Create Your Account",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1976D2),
-              ),
-            ),
-            const SizedBox(height: 5),
-            const Text(
-              "Join our community of local professionals",
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1976D2),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const Text("Create Your Account", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
+            const SizedBox(height: 6),
+            const Text("Join our community of local professionals", style: TextStyle(fontSize: 14, color: Color(0xFF1976D2))),
+            const SizedBox(height: 25),
 
-            // Profile Picture Upload
-            Stack(
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 55,
-                    backgroundColor: Colors.grey.shade100,
-                    backgroundImage:
-                        _profileImage != null ? FileImage(_profileImage!) : null,
-                    child: _profileImage == null
-                        ? const Icon(Icons.person,
-                            size: 50, color: Color(0xFF1976D2))
-                        : null,
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1976D2),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+            _buildProfilePicture(),
+            const SizedBox(height: 25),
 
-            // Form Container
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.shade100,
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Name and Surname Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(_nameController, "First Name", Icons.person),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: _buildTextField(_surnameController, "Surname", Icons.person_outline),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  _buildTextField(_emailController, "Email", Icons.email, TextInputType.emailAddress),
-                  const SizedBox(height: 15),
-                  _buildPasswordField(_passwordController, "Password", _obscurePassword, () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  }),
-                  const SizedBox(height: 15),
-                  _buildPasswordField(_confirmPasswordController, "Confirm Password", _obscureConfirm, () {
-                    setState(() {
-                      _obscureConfirm = !_obscureConfirm;
-                    });
-                  }),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _forgotPassword,
-                      child: const Text(
-                        "Forgot Password?",
-                        style: TextStyle(color: Color(0xFF1976D2)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Role selection
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "I want to join as a:",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text("Service Provider"),
-                          selected: _selectedRole == "Service Provider",
-                          selectedColor: const Color(0xFF1976D2),
-                          labelStyle: TextStyle(
-                            color: _selectedRole == "Service Provider"
-                                ? Colors.white
-                                : const Color(0xFF1976D2),
-                          ),
-                          onSelected: (_) {
-                            setState(() => _selectedRole = "Service Provider");
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text("Client"),
-                          selected: _selectedRole == "Client",
-                          selectedColor: const Color(0xFF1976D2),
-                          labelStyle: TextStyle(
-                            color: _selectedRole == "Client"
-                                ? Colors.white
-                                : const Color(0xFF1976D2),
-                          ),
-                          onSelected: (_) {
-                            setState(() => _selectedRole = "Client");
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Skills
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Select Your Skills",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  IgnorePointer(
-                    ignoring: _selectedRole == "Client",
-                    child: Opacity(
-                      opacity: _selectedRole == "Client" ? 0.4 : 1,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _skills.map((skill) {
-                          final bool isSelected = _selectedSkills.contains(skill);
-                          return FilterChip(
-                            label: Text(skill),
-                            selected: isSelected,
-                            selectedColor: const Color(0xFF1976D2),
-                            checkmarkColor: Colors.white,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF1976D2),
-                            ),
-                            onSelected: (_) => _toggleSkill(skill),
-                            backgroundColor: Colors.blue.shade50,
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1976D2),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 5,
-                        shadowColor: Colors.blue.shade200,
-                      ),
-                      child: const Text(
-                        "Sign Up",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Login link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account?"),
-                      TextButton(
-  onPressed: () {
-    // Navigate to your existing LoginPage
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-  },
-  child: const Text(
-    "Log In",
-    style: TextStyle(
-      color: Color(0xFF1976D2),
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+            _buildFormCard(),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // Helpers
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      [TextInputType inputType = TextInputType.text]) {
+  Widget _buildProfilePicture() => Stack(
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 6))],
+            ),
+            child: CircleAvatar(
+              radius: 55,
+              backgroundColor: Colors.grey.shade100,
+              backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+              child: _profileImage == null ? const Icon(Icons.person, size: 50, color: Color(0xFF1976D2)) : null,
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      );
+
+  Widget _buildFormCard() => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.blue.shade100, blurRadius: 18, offset: const Offset(0, 8))],
+        ),
+        child: Column(
+          children: [
+            _buildNameFields(),
+            const SizedBox(height: 15),
+            _buildTextField(_emailController, "Email", Icons.email, TextInputType.emailAddress),
+            const SizedBox(height: 15),
+            _buildPasswordField(_passwordController, "Password", _obscurePassword, () => setState(() => _obscurePassword = !_obscurePassword)),
+            const SizedBox(height: 15),
+            _buildPasswordField(_confirmPasswordController, "Confirm Password", _obscureConfirm, () => setState(() => _obscureConfirm = !_obscureConfirm)),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _forgotPassword,
+                child: const Text("Forgot Password?", style: TextStyle(color: Color(0xFF1976D2))),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            _buildRoleSelection(),
+            const SizedBox(height: 20),
+
+            _buildSkillsSelection(),
+
+            const SizedBox(height: 20),
+            _buildSignUpButton(),
+            const SizedBox(height: 12),
+            _buildLoginLink(),
+          ],
+        ),
+      );
+
+  Widget _buildNameFields() => Row(
+        children: [
+          Expanded(child: _buildTextField(_nameController, "First Name", Icons.person)),
+          const SizedBox(width: 15),
+          Expanded(child: _buildTextField(_surnameController, "Surname", Icons.person_outline)),
+        ],
+      );
+
+  Widget _buildRoleSelection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("I want to join as a:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2))),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text("Service Provider"),
+                  selected: _selectedRole == "Service Provider",
+                  selectedColor: const Color(0xFF1976D2),
+                  labelStyle: TextStyle(color: _selectedRole == "Service Provider" ? Colors.white : const Color(0xFF1976D2)),
+                  onSelected: (_) => setState(() => _selectedRole = "Service Provider"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text("Client"),
+                  selected: _selectedRole == "Client",
+                  selectedColor: const Color(0xFF1976D2),
+                  labelStyle: TextStyle(color: _selectedRole == "Client" ? Colors.white : const Color(0xFF1976D2)),
+                  onSelected: (_) => setState(() => _selectedRole = "Client"),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+  Widget _buildSkillsSelection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Select Your Skills", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2))),
+          const SizedBox(height: 10),
+          IgnorePointer(
+            ignoring: _selectedRole == "Client",
+            child: Opacity(
+              opacity: _selectedRole == "Client" ? 0.4 : 1,
+              child: Column(
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _skills.map((skill) {
+                      final bool isSelected = _selectedSkills.contains(skill);
+                      return FilterChip(
+                        label: Text(skill),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF1976D2),
+                        checkmarkColor: Colors.white,
+                        labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2)),
+                        onSelected: (_) => _toggleSkill(skill),
+                        backgroundColor: Colors.blue.shade50,
+                      );
+                    }).toList(),
+                  ),
+                  if (_showOtherSkillField)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: _buildTextField(_otherSkillController, "Enter your skill", Icons.star),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+
+  Widget _buildSignUpButton() => SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1976D2),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 5,
+            shadowColor: Colors.blue.shade200,
+          ),
+          child: const Text("Sign Up", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+        ),
+      );
+
+  Widget _buildLoginLink() => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("Already have an account?"),
+          TextButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+            },
+            child: const Text("Log In", style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600)),
+          ),
+        ],
+      );
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType inputType = TextInputType.text]) {
     return TextField(
       controller: controller,
       keyboardType: inputType,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.blue.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
         ),
       ),
     );
   }
 
-  Widget _buildPasswordField(TextEditingController controller, String label,
-      bool obscureText, VoidCallback onToggle) {
+  Widget _buildPasswordField(TextEditingController controller, String label, bool obscureText, VoidCallback onToggle) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
-        suffixIcon: IconButton(
-          icon: Icon(
-            obscureText ? Icons.visibility : Icons.visibility_off,
-            color: const Color(0xFF1976D2),
-          ),
-          onPressed: onToggle,
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-        ),
+        suffixIcon: IconButton(icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF1976D2)), onPressed: onToggle),
+        filled: true,
+        fillColor: Colors.blue.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2)),
       ),
     );
   }
-
 }
+
+
+
 
 
 class LoginPage extends StatefulWidget {
