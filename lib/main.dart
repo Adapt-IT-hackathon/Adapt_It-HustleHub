@@ -608,17 +608,21 @@ class _SignUpPageState extends State<SignUpPage> {
                     children: [
                       const Text("Already have an account?"),
                       TextButton(
-                        onPressed: () {
-                          // TODO: Navigate to LoginPage
-                        },
-                        child: const Text(
-                          "Log In",
-                          style: TextStyle(
-                            color: Color(0xFF1976D2),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+  onPressed: () {
+    // Navigate to your existing LoginPage
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  },
+  child: const Text(
+    "Log In",
+    style: TextStyle(
+      color: Color(0xFF1976D2),
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
                     ],
                   ),
                 ],
