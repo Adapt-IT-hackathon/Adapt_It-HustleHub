@@ -1277,92 +1277,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
             _buildStatsSection(),
             const SizedBox(height: 20),
 
-            // Map section title
-            const Text(
-              'Jobs Near You',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1976D2),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Find local service providers in your area',
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 15),
 
-            // Map placeholder
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade100),
-              ),
-              child: Stack(
-                children: [
-                  // This would be replaced with an actual map widget
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.map,
-                          size: 50,
-                          color: Color(0xFF1976D2),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Map View - Showing Nearby Jobs',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  // Map markers for demo
-                  Positioned(
-                    top: 40,
-                    left: 60,
-                    child: _MapMarker(
-                      color: Colors.blue,
-                      jobType: 'Plumbing',
-                    ),
-                  ),
-                  Positioned(
-                    top: 80,
-                    right: 70,
-                    child: _MapMarker(
-                      color: Colors.amber,
-                      jobType: 'Electrical',
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 60,
-                    left: 100,
-                    child: _MapMarker(
-                      color: Colors.green,
-                      jobType: 'Gardening',
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 40,
-                    right: 50,
-                    child: _MapMarker(
-                      color: Colors.purple,
-                      jobType: 'Painting',
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -4342,7 +4258,7 @@ class WorkerProfilePage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text(
-                  'Contact Worker',
+                  'View Contact Details',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
