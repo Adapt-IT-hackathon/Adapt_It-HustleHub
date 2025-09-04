@@ -983,7 +983,10 @@ class _LoginPageState extends State<LoginPage>
                   const Text("Don't have an account?"),
                   TextButton(
                     onPressed: () {
-                      // TODO: Navigate to SignUpPage
+                      Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignUpPage()),
+                    );
                     },
                     child: const Text(
                       "Sign Up",
@@ -1087,45 +1090,7 @@ class _RoleOption extends StatelessWidget {
   }
 }
 
-class _RoleOption extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
 
-  const _RoleOption({
-    required this.title,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1976D2) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? const Color(0xFF1976D2) : Colors.grey.shade300, width: 2),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 3)),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: isSelected ? Colors.white : const Color(0xFF1976D2)),
-            const SizedBox(height: 6),
-            Text(title, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2), fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 
 
