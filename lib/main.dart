@@ -8,6 +8,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 //welcome page
 void main() async {
@@ -3706,45 +3709,61 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
   }
 
   Widget _buildActiveJobsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Your Active Jobs',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1976D2),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Jobs you\'ve posted and their current status',
-          style: TextStyle(
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 15),
-        ListView.separated(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: 3, // Example number of jobs
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            return _JobCard(
-              jobTitle: 'Website Development',
-              jobType: 'IT & Programming',
-              location: 'San Francisco, CA',
-              postedDate: '2 days ago',
-              applications: 5,
-              status: index == 0 ? 'Active' : (index == 1 ? 'In Review' : 'Completed'),
-              statusColor: index == 0 ? Colors.green : (index == 1 ? Colors.orange : Colors.blue),
-            );
-          },
-        ),
-      ],
-    );
-  }
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Your Active Jobs', /* styling */),
+      const SizedBox(height: 10),
+      const Text('Jobs you\'ve posted and their current status', /* styling */),
+      const SizedBox(height: 15),
+      StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('jobs')
+            .where('postedBy', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('Error: ${snapshot.error}');
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Text('No active jobs yet.');
+          }
+
+          return ListView.separated(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: docs.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+
+              final job = docs[index].data()! as Map<String, dynamic>;
+              String formattedDate = DateFormat.yMMMd().format((job['postedAt'] as Timestamp).toDate());
+
+              return _JobCard(
+                jobTitle: job['title'] ?? 'No title',
+                jobType: job['type'] ?? 'N/A',
+                location: job['location'] ?? 'N/A',
+                postedDate: 'Some date', // you can compute or store this field
+                applications: job['applications'] ?? 0,
+                status: job['status'] ?? 'Unknown',
+                statusColor: job['status'] == 'Active'
+                    ? Colors.green
+                    : (job['status'] == 'In Review'
+                        ? Colors.orange
+                        : Colors.blue),
+              );
+            },
+          );
+        },
+      ),
+    ],
+  );
+}
 
   BottomAppBar _buildBottomAppBar() {
     return BottomAppBar(
@@ -4207,22 +4226,20 @@ class _AddJobPageState extends State<AddJobPage> {
   }
   Future<void> _postJobToFirestore() async {
   try {
-    final user = FirebaseAuth.instance.currentUser;
-
-  //  if (user == null) {
-   //   ScaffoldMessenger.of(context).showSnackBar(
-     //   const SnackBar(content: Text("You must be logged in to post a job.")),
-     // );
-     // return;
-   // }
-
+    final user = FirebaseAuth.instance.currentUser?.uid;
+    
+  
+    if (user == null) {
+      throw Exception("User not logged in");
+    }
     await FirebaseFirestore.instance.collection('jobs').add({
       'title': _titleController.text.trim(),
       'type': _selectedJobType,
       'location': _locationController.text.trim(),
       'skills': _skillsController.text.trim().split(',').map((e) => e.trim()).toList(),
       'description': _descriptionController.text.trim(),
-    //  'postedBy': user.uid, // Save the user ID
+      'postedBy': FirebaseAuth.instance.currentUser!.uid ,
+      'status': 'Active', // Default status
       'postedAt': FieldValue.serverTimestamp(), // Save timestamp
     });
 
