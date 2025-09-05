@@ -3253,7 +3253,6 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         backgroundColor: const Color(0xFF1976D2),
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: _buildBottomAppBar(),
     );
   }
 
