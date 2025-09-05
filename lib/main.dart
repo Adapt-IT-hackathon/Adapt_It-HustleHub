@@ -9,6 +9,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 //welcome page
 void main() async {
@@ -281,13 +287,14 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+  TextEditingController();
   final TextEditingController _otherSkillController = TextEditingController();
 
   File? _profileImage;
   final picker = ImagePicker();
 
-  String _selectedRole = "Service Provider"; // default
+  String _selectedRole = "Service Provider";
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -308,8 +315,54 @@ class _SignUpPageState extends State<SignUpPage> {
   final Set<String> _selectedSkills = {};
   bool _showOtherSkillField = false;
 
+  Future<void> registerUser({
+    required String uid,
+    required String email,
+    required String fullName,
+    required String password,
+    required String surName,
+    required String role,
+    required List<String> skills,
+    String? profileImageUrl,
+  }) async {
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'uid': uid,
+      'email': email,
+      'fullName': fullName,
+      'password': password,
+      'surName': surName,
+      'role': role,
+      'skills': skills,
+      'profileImageUrl': profileImageUrl,
+      'isVerified': false,
+      'createdAt': Timestamp.now(),
+    });
+  }
+
+  Future<String?> _uploadProfileImage() async {
+    if (_profileImage == null) return null;
+
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child(
+          '${_emailController.text}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+      final uploadTask = storageRef.putFile(_profileImage!);
+      final snapshot = await uploadTask.whenComplete(() {});
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
   Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile =
+    await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _profileImage = File(pickedFile.path);
@@ -335,7 +388,7 @@ class _SignUpPageState extends State<SignUpPage> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -346,16 +399,99 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    if (_showOtherSkillField && _otherSkillController.text.isNotEmpty) {
-      _selectedSkills.add(_otherSkillController.text.trim());
+    if (_nameController.text.isEmpty || _surnameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Please enter your name and surname"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("✅ Sign Up Successful!"),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
+    if (_selectedRole == "Service Provider" &&
+        _selectedSkills.isEmpty &&
+        !(_showOtherSkillField && _otherSkillController.text.isNotEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Please select at least one skill"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final List<String> finalSkills = _selectedSkills.toList();
+      if (_showOtherSkillField && _otherSkillController.text.isNotEmpty) {
+        finalSkills.add(_otherSkillController.text.trim());
+      }
+
+      String? profileImageUrl = await _uploadProfileImage();
+
+      final UserCredential userCredential =
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      await registerUser(
+        uid: userCredential.user!.uid,
+        email: _emailController.text.trim(),
+        fullName: _nameController.text.trim(),
+        password: _passwordController.text.trim(),
+        surName: _surnameController.text.trim(),
+        role: _selectedRole,
+        skills: finalSkills,
+        profileImageUrl: profileImageUrl,
+      );
+
+      await userCredential.user!.sendEmailVerification();
+
+      // Force logout after sign up
+      await FirebaseAuth.instance.signOut();
+
+      // ✅ Show success toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+          const Text("✅ Sign Up Successful! Please verify your email."),
+          backgroundColor: Colors.green.shade700,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Navigate to LoginPage after small delay
+      Future.delayed(const Duration(seconds: 0), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      });
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "An error occurred during sign up";
+      if (e.code == 'weak-password') {
+        errorMessage = "The password provided is too weak";
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = "The account already exists for that email";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "The email address is not valid";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ $errorMessage"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ An error occurred: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _forgotPassword() {
@@ -387,7 +523,9 @@ class _SignUpPageState extends State<SignUpPage> {
             const Text(
               "Create Your Account",
               style: TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1976D2)),
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1976D2)),
             ),
             const SizedBox(height: 5),
             const Text(
@@ -395,7 +533,6 @@ class _SignUpPageState extends State<SignUpPage> {
               style: TextStyle(fontSize: 14, color: Color(0xFF1976D2)),
             ),
             const SizedBox(height: 20),
-
             // Profile Picture
             Stack(
               children: [
@@ -417,9 +554,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: CircleAvatar(
                     radius: 55,
                     backgroundColor: Colors.grey.shade100,
-                    backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                    backgroundImage: _profileImage != null
+                        ? FileImage(_profileImage!)
+                        : null,
                     child: _profileImage == null
-                        ? const Icon(Icons.person, size: 50, color: Color(0xFF1976D2))
+                        ? const Icon(Icons.person,
+                        size: 50, color: Color(0xFF1976D2))
                         : null,
                   ),
                 ),
@@ -436,14 +576,14 @@ class _SignUpPageState extends State<SignUpPage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                      child: const Icon(Icons.camera_alt,
+                          size: 18, color: Colors.white),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-
             // Form Container
             Container(
               padding: const EdgeInsets.all(20),
@@ -464,22 +604,31 @@ class _SignUpPageState extends State<SignUpPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(_nameController, "First Name", Icons.person),
+                        child: _buildTextField(
+                            _nameController, "First Name", Icons.person),
                       ),
                       const SizedBox(width: 15),
                       Expanded(
-                        child: _buildTextField(_surnameController, "Surname", Icons.person_outline),
+                        child: _buildTextField(
+                            _surnameController,
+                            "Surname",
+                            Icons.person_outline),
                       ),
                     ],
                   ),
                   const SizedBox(height: 15),
-                  _buildTextField(_emailController, "Email", Icons.email, TextInputType.emailAddress),
+                  _buildTextField(_emailController, "Email", Icons.email,
+                      TextInputType.emailAddress),
                   const SizedBox(height: 15),
-                  _buildPasswordField(_passwordController, "Password", _obscurePassword, () {
-                    setState(() => _obscurePassword = !_obscurePassword);
-                  }),
+                  _buildPasswordField(_passwordController, "Password",
+                      _obscurePassword, () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      }),
                   const SizedBox(height: 15),
-                  _buildPasswordField(_confirmPasswordController, "Confirm Password", _obscureConfirm, () {
+                  _buildPasswordField(
+                      _confirmPasswordController,
+                      "Confirm Password",
+                      _obscureConfirm, () {
                     setState(() => _obscureConfirm = !_obscureConfirm);
                   }),
                   const SizedBox(height: 8),
@@ -487,17 +636,20 @@ class _SignUpPageState extends State<SignUpPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: _forgotPassword,
-                      child: const Text("Forgot Password?", style: TextStyle(color: Color(0xFF1976D2))),
+                      child: const Text("Forgot Password?",
+                          style: TextStyle(color: Color(0xFF1976D2))),
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   // Role
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "I want to join as a:",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1976D2)),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -510,8 +662,11 @@ class _SignUpPageState extends State<SignUpPage> {
                           selected: _selectedRole == "Service Provider",
                           selectedColor: const Color(0xFF1976D2),
                           labelStyle: TextStyle(
-                              color: _selectedRole == "Service Provider" ? Colors.white : const Color(0xFF1976D2)),
-                          onSelected: (_) => setState(() => _selectedRole = "Service Provider"),
+                              color: _selectedRole == "Service Provider"
+                                  ? Colors.white
+                                  : const Color(0xFF1976D2)),
+                          onSelected: (_) => setState(
+                                  () => _selectedRole = "Service Provider"),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -521,24 +676,22 @@ class _SignUpPageState extends State<SignUpPage> {
                           selected: _selectedRole == "Client",
                           selectedColor: const Color(0xFF1976D2),
                           labelStyle: TextStyle(
-                              color: _selectedRole == "Client" ? Colors.white : const Color(0xFF1976D2)),
-                          onSelected: (_) => setState(() => _selectedRole = "Client"),
+                              color: _selectedRole == "Client"
+                                  ? Colors.white
+                                  : const Color(0xFF1976D2)),
+                          onSelected: (_) =>
+                              setState(() => _selectedRole = "Client"),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   // Skills
                   _buildSkillsSelection(),
-
                   const SizedBox(height: 20),
-
                   // Sign Up Button
                   _buildSignUpButton(),
-
                   const SizedBox(height: 10),
-
                   // Login Link
                   _buildLoginLink(),
                 ],
@@ -557,7 +710,8 @@ class _SignUpPageState extends State<SignUpPage> {
       children: [
         const Text(
           "Select Your Skills",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
         ),
         const SizedBox(height: 10),
         IgnorePointer(
@@ -576,8 +730,13 @@ class _SignUpPageState extends State<SignUpPage> {
                       selected: isSelected,
                       selectedColor: const Color(0xFF1976D2),
                       checkmarkColor: Colors.white,
-                      labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2)),
-                      onSelected: (_) => _toggleSkill(skill),
+                      labelStyle: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF1976D2)),
+                      onSelected: (_selectedRole == "Client")
+                          ? null
+                          : (_) => _toggleSkill(skill),
                       backgroundColor: Colors.blue.shade50,
                     );
                   }).toList(),
@@ -585,7 +744,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 if (_showOtherSkillField)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: _buildTextField(_otherSkillController, "Enter your skill", Icons.star),
+                    child: _buildTextField(
+                        _otherSkillController, "Enter your skill", Icons.star),
                   ),
               ],
             ),
@@ -603,13 +763,17 @@ class _SignUpPageState extends State<SignUpPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1976D2),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 5,
           shadowColor: Colors.blue.shade200,
         ),
         child: const Text(
           "Sign Up",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.white),
         ),
       ),
     );
@@ -622,19 +786,21 @@ class _SignUpPageState extends State<SignUpPage> {
         const Text("Already have an account?"),
         TextButton(
           onPressed: () {
-            // Navigate to login page (replace with your LoginPage)
-            Navigator.push(context, MaterialPageRoute(builder: (_)=>LoginPage()));
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (_) => const LoginPage()));
           },
           child: const Text(
             "Log In",
-            style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: Color(0xFF1976D2), fontWeight: FontWeight.w600),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+  Widget _buildTextField(TextEditingController controller, String label,
+      IconData icon,
       [TextInputType inputType = TextInputType.text]) {
     return TextField(
       controller: controller,
@@ -653,7 +819,8 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildPasswordField(TextEditingController controller, String label, bool obscureText, VoidCallback onToggle) {
+  Widget _buildPasswordField(TextEditingController controller, String label,
+      bool obscureText, VoidCallback onToggle) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -661,18 +828,22 @@ class _SignUpPageState extends State<SignUpPage> {
         labelText: label,
         prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
         suffixIcon: IconButton(
-          icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF1976D2)),
+          icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off,
+              color: const Color(0xFF1976D2)),
           onPressed: onToggle,
         ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.blue.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
         ),
       ),
     );
   }
 }
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -715,8 +886,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     _animationController.dispose();
     super.dispose();
   }
-
-  void _login() {
+  Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -727,22 +897,79 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       return;
     }
 
-    String dashboard = _selectedRole == "Service Provider"
-        ? "ClientDashboard"
-        : "ServiceDashboard";
+    try {
+      // 1. Authenticate with Firebase
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("✅ Login successful as $_selectedRole!"),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
+      // 2. Get user data from Firestore to check actual role
+      final DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
 
-        if(_selectedRole == "Service Provider"){
-          Navigator.push(context, MaterialPageRoute(builder: (_)=>ClientDashboard()));
-        }else if(_selectedRole == "Client"){
-            Navigator.push(context, MaterialPageRoute(builder: (_)=>ServiceDashboard()));
-          }
+      if (!userDoc.exists) {
+        throw Exception("User data not found");
+      }
+
+      final String userRole = userDoc['role'] ?? 'Client';
+
+      // 3. Verify the selected role matches the actual role
+      if (userRole != _selectedRole) {
+        throw Exception("You are registered as a $userRole, not $_selectedRole");
+      }
+
+      // 4. Navigate to the correct dashboard based on ACTUAL role
+      if (userRole == "Service Provider") {
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => ClientDashboard())
+        );
+      } else if (userRole == "Client") {
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => ServiceDashboard())
+        );
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Login successful as $userRole!"),
+          backgroundColor: Colors.green.shade700,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Login failed";
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "Incorrect password";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "Invalid email address";
+      } else if (e.code == 'user-disabled') {
+        errorMessage = "This account has been disabled";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ $errorMessage"),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ ${e.toString()}"),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   void _forgotPassword() {
