@@ -6,14 +6,7 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 //welcome page
@@ -273,15 +266,12 @@ class _IntroductionPageState extends State<IntroductionPage> {
   }
 }
 
-
-
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
 }
-
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _surnameController = TextEditingController();
@@ -290,11 +280,13 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _confirmPasswordController =
   TextEditingController();
   final TextEditingController _otherSkillController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
 
   File? _profileImage;
   final picker = ImagePicker();
 
   String _selectedRole = "Service Provider";
+  String _experienceLevel = "Beginner";
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -312,6 +304,8 @@ class _SignUpPageState extends State<SignUpPage> {
     "Other"
   ];
 
+  final List<String> _experienceLevels = ["Beginner", "Intermediate", "Expert"];
+
   final Set<String> _selectedSkills = {};
   bool _showOtherSkillField = false;
 
@@ -324,7 +318,10 @@ class _SignUpPageState extends State<SignUpPage> {
     required String role,
     required List<String> skills,
     String? profileImageUrl,
+    required String location,
+    required String experienceLevel,
   }) async {
+    // Create user document
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'uid': uid,
       'email': email,
@@ -334,9 +331,28 @@ class _SignUpPageState extends State<SignUpPage> {
       'role': role,
       'skills': skills,
       'profileImageUrl': profileImageUrl,
+      'location': location,
+      'experienceLevel': experienceLevel,
       'isVerified': false,
       'createdAt': Timestamp.now(),
     });
+
+    // If user is a service provider, create a worker document
+    if (role == "Service Provider") {
+      await FirebaseFirestore.instance.collection('workers').doc(uid).set({
+        'uid': uid,
+        'fullName': '$fullName $surName',
+        'email': email,
+        'skills': skills,
+        'profileImageUrl': profileImageUrl,
+        'location': location,
+        'experienceLevel': experienceLevel,
+        'rating': 0,
+        'totalJobs': 0,
+        'isAvailable': true,
+        'createdAt': Timestamp.now(),
+      });
+    }
   }
 
   Future<String?> _uploadProfileImage() async {
@@ -409,6 +425,16 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    if (_locationController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Please enter your location"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     if (_selectedRole == "Service Provider" &&
         _selectedSkills.isEmpty &&
         !(_showOtherSkillField && _otherSkillController.text.isNotEmpty)) {
@@ -444,6 +470,8 @@ class _SignUpPageState extends State<SignUpPage> {
         role: _selectedRole,
         skills: finalSkills,
         profileImageUrl: profileImageUrl,
+        location: _locationController.text.trim(),
+        experienceLevel: _experienceLevel,
       );
 
       await userCredential.user!.sendEmailVerification();
@@ -609,9 +637,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(width: 15),
                       Expanded(
-                        child: _buildTextField(
-                            _surnameController,
-                            "Surname",
+                        child: _buildTextField(_surnameController, "Surname",
                             Icons.person_outline),
                       ),
                     ],
@@ -620,17 +646,18 @@ class _SignUpPageState extends State<SignUpPage> {
                   _buildTextField(_emailController, "Email", Icons.email,
                       TextInputType.emailAddress),
                   const SizedBox(height: 15),
+                  _buildTextField(
+                      _locationController, "Location", Icons.location_on),
+                  const SizedBox(height: 15),
                   _buildPasswordField(_passwordController, "Password",
                       _obscurePassword, () {
                         setState(() => _obscurePassword = !_obscurePassword);
                       }),
                   const SizedBox(height: 15),
-                  _buildPasswordField(
-                      _confirmPasswordController,
-                      "Confirm Password",
-                      _obscureConfirm, () {
-                    setState(() => _obscureConfirm = !_obscureConfirm);
-                  }),
+                  _buildPasswordField(_confirmPasswordController,
+                      "Confirm Password", _obscureConfirm, () {
+                        setState(() => _obscureConfirm = !_obscureConfirm);
+                      }),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
@@ -686,6 +713,41 @@ class _SignUpPageState extends State<SignUpPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  // Experience Level (only for Service Providers)
+                  if (_selectedRole == "Service Provider") ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Experience Level:",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1976D2)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: _experienceLevel,
+                      items: _experienceLevels.map((String level) {
+                        return DropdownMenuItem<String>(
+                          value: level,
+                          child: Text(level),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _experienceLevel = newValue!;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.blue.shade50,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   // Skills
                   _buildSkillsSelection(),
                   const SizedBox(height: 20),
@@ -711,7 +773,9 @@ class _SignUpPageState extends State<SignUpPage> {
         const Text(
           "Select Your Skills",
           style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1976D2)),
         ),
         const SizedBox(height: 10),
         IgnorePointer(
@@ -771,9 +835,7 @@ class _SignUpPageState extends State<SignUpPage> {
         child: const Text(
           "Sign Up",
           style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white),
+              fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
         ),
       ),
     );
@@ -786,8 +848,8 @@ class _SignUpPageState extends State<SignUpPage> {
         const Text("Already have an account?"),
         TextButton(
           onPressed: () {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const LoginPage()));
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const LoginPage()));
           },
           child: const Text(
             "Log In",
@@ -800,8 +862,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label,
-      IconData icon,
-      [TextInputType inputType = TextInputType.text]) {
+      IconData icon, [TextInputType inputType = TextInputType.text]) {
     return TextField(
       controller: controller,
       keyboardType: inputType,
@@ -843,8 +904,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
-
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -1265,8 +1324,7 @@ class _RoleOption extends StatelessWidget {
 }
 
 
-
-
+// Make sure you import your other pages & custom widgets like CustomRatingBar, JobsPage, TasksPage, ProfilePage
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -1279,6 +1337,16 @@ class _ClientDashboardState extends State<ClientDashboard> {
   int _currentIndex = 0;
   final double _userRating = 4.7; // Example rating
   final int _completedJobs = 12; // Example completed jobs
+
+  Future<String> getUsername() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return "User";
+    final dat = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    var doc = dat.data() as Map<String, dynamic>?;
+    if (doc == null) return "User";
+    final String name = doc['fullName'] ?? "User";
+    return name;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1315,10 +1383,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
 
             // Quick stats
             _buildStatsSection(),
-            const SizedBox(height: 20),
-
-
-
             const SizedBox(height: 20),
           ],
         ),
@@ -1357,13 +1421,38 @@ class _ClientDashboardState extends State<ClientDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome back, Sarah!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                FutureBuilder<String>(
+                  future: getUsername(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text(
+                        "Loading...",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    } else if (snapshot.hasError) {
+                      return const Text(
+                        "Error loading name",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    } else {
+                      return Text(
+                        "Welcome back, ${snapshot.data}!",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 5),
                 Text(
@@ -1500,7 +1589,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
         ),
         const SizedBox(width: 15),
-       
       ],
     );
   }
@@ -1533,7 +1621,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               setState(() {
                 _currentIndex = 1;
               });
-            Navigator.push(context, MaterialPageRoute(builder: (_)=>JobsPage()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => JobsPage()));
             },
           ),
           IconButton(
@@ -1545,8 +1633,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               setState(() {
                 _currentIndex = 2;
               });
-              Navigator.push(context, MaterialPageRoute(builder: (_)=>TasksPage()));
-
+              Navigator.push(context, MaterialPageRoute(builder: (_) => TasksPage()));
             },
           ),
           IconButton(
@@ -1558,8 +1645,62 @@ class _ClientDashboardState extends State<ClientDashboard> {
               setState(() {
                 _currentIndex = 3;
               });
-              Navigator.push(context, MaterialPageRoute(builder: (_)=>ProfilePage()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage()));
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Example stat card widget (make sure you have this)
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -1622,67 +1763,7 @@ class CustomRatingBar extends StatelessWidget {
 }
 
 // Custom widget for statistics cards
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            size: 24,
-            color: color,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1976D2),
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Custom widget for map markers
+//widget for map markers
 class _MapMarker extends StatelessWidget {
   final Color color;
   final String jobType;
@@ -3418,6 +3499,15 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
   final int _activeJobs = 5; // Example active jobs
   final int _completedJobs = 23; // Example completed jobs
 
+  Future<String> getUsername() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return "User";
+    final dat = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    var doc = dat.data() as Map<String, dynamic>?;
+    if (doc == null) return "User";
+    final String name = doc['fullName'] ?? "User";
+    return name;
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3514,13 +3604,38 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome, TechSolutions Inc!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                FutureBuilder<String>(
+                  future: getUsername(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text(
+                        "Loading...",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    } else if (snapshot.hasError) {
+                      return const Text(
+                        "Error loading name",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    } else {
+                      return Text(
+                        "Welcome back, ${snapshot.data}!",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 5),
                 Text(
@@ -3691,8 +3806,154 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
     );
   }
 }
+class WorkerJobsPage extends StatefulWidget {
+  const WorkerJobsPage({super.key});
+
+  @override
+  State<WorkerJobsPage> createState() => _WorkerJobsPageState();
+}
 
 
+class _WorkerJobsPageState extends State<WorkerJobsPage> {
+  List<Map<String, dynamic>> _jobRequests = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadJobRequests();
+  }
+
+  Future<void> _loadJobRequests() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // First, get the worker document to access their job requests
+      final workerDoc = await FirebaseFirestore.instance
+          .collection('workers')
+          .doc(user.uid)
+          .get();
+
+      if (workerDoc.exists) {
+        final workerData = workerDoc.data() as Map<String, dynamic>;
+
+        // Get the list of job request IDs from the worker document
+        final List<dynamic> jobRequestIds = workerData['jobRequests'] ?? [];
+
+        if (jobRequestIds.isNotEmpty) {
+          // Fetch all job requests from the jobRequests collection
+          final QuerySnapshot snapshot = await FirebaseFirestore.instance
+              .collection('jobRequests')
+              .where(FieldPath.documentId, whereIn: jobRequestIds)
+              .orderBy('createdAt', descending: true)
+              .get();
+
+          setState(() {
+            _jobRequests = snapshot.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return {
+                'id': doc.id,
+                ...data,
+              };
+            }).toList();
+          });
+        } else {
+          setState(() {
+            _jobRequests = [];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading job requests: $e');
+    }
+  }
+
+  Future<void> _updateJobStatus(String jobId, String status) async {
+    try {
+      // Update the job status in the jobRequests collection
+      await FirebaseFirestore.instance
+          .collection('jobRequests')
+          .doc(jobId)
+          .update({'status': status});
+
+      // Reload the job requests
+      _loadJobRequests();
+    } catch (e) {
+      print('Error updating job status: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("My Job Requests"),
+        backgroundColor: const Color(0xFF1976D2),
+      ),
+      body: _jobRequests.isEmpty
+          ? const Center(child: Text("No job requests yet"))
+          : ListView.builder(
+        itemCount: _jobRequests.length,
+        itemBuilder: (context, index) {
+          final job = _jobRequests[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Job Request #${job['id'].substring(0, 8)}",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text("Status: ${job['status']}"),
+                  Text("Received: ${DateFormat('MMM dd, yyyy').format((job['createdAt'] as Timestamp).toDate())}"),
+                  const SizedBox(height: 10),
+                  if (job['status'] == 'pending')
+                    Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _updateJobStatus(job['id'], 'accepted'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                          ),
+                          child: const Text(
+                            "Accept",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () => _updateJobStatus(job['id'], 'cancelled'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          child: const Text(
+                            "Decline",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (job['status'] == 'accepted')
+                    ElevatedButton(
+                      onPressed: () => _updateJobStatus(job['id'], 'completed'),
+                      child: const Text("Mark as Completed"),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 // Custom Rating Bar Widget (same as before)(rename custom rating and use it propely it already exiat)
 class cCustomRatingBar extends StatelessWidget {
   final double rating;
@@ -3989,43 +4250,36 @@ class WorkerSearchPage extends StatefulWidget {
 
 class _WorkerSearchPageState extends State<WorkerSearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  final List<Map<String, dynamic>> _workers = [
-    {
-      'name': 'John Doe',
-      'skills': ['Plumbing', 'Electrical'],
-      'rating': 4.7,
-      'completedJobs': 42,
-      'location': 'San Francisco, CA'
-    },
-    {
-      'name': 'Jane Smith',
-      'skills': ['Design', 'UI/UX'],
-      'rating': 4.9,
-      'completedJobs': 78,
-      'location': 'New York, NY'
-    },
-    {
-      'name': 'Mike Johnson',
-      'skills': ['Programming', 'Web Development'],
-      'rating': 4.8,
-      'completedJobs': 56,
-      'location': 'Austin, TX'
-    },
-    {
-      'name': 'Sarah Williams',
-      'skills': ['Writing', 'Content Creation'],
-      'rating': 4.6,
-      'completedJobs': 34,
-      'location': 'Chicago, IL'
-    },
-  ];
+  List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _filteredWorkers = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredWorkers = _workers;
+    _fetchWorkers();
     _searchController.addListener(_filterWorkers);
+  }
+
+  Future<void> _fetchWorkers() async {
+    final querySnapshot =
+    await FirebaseFirestore.instance.collection('workers').get();
+
+    final workersData = querySnapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'name': data['name'] ?? '',
+        'skills': List<String>.from(data['skills'] ?? []),
+        'rating': (data['rating'] ?? 0).toDouble(),
+        'completedJobs': data['completedJobs'] ?? 0,
+        'location': data['location'] ?? '',
+        'id': doc.id, // optional if needed for later
+      };
+    }).toList();
+
+    setState(() {
+      _workers = workersData;
+      _filteredWorkers = _workers;
+    });
   }
 
   void _filterWorkers() {
@@ -4038,7 +4292,8 @@ class _WorkerSearchPageState extends State<WorkerSearchPage> {
       setState(() {
         _filteredWorkers = _workers.where((worker) {
           return worker['name'].toLowerCase().contains(query) ||
-              worker['skills'].any((skill) => skill.toLowerCase().contains(query)) ||
+              worker['skills']
+                  .any((skill) => skill.toLowerCase().contains(query)) ||
               worker['location'].toLowerCase().contains(query);
         }).toList();
       });
@@ -4068,7 +4323,9 @@ class _WorkerSearchPageState extends State<WorkerSearchPage> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
+            child: _workers.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
               itemCount: _filteredWorkers.length,
               itemBuilder: (context, index) {
                 final worker = _filteredWorkers[index];
@@ -4082,7 +4339,8 @@ class _WorkerSearchPageState extends State<WorkerSearchPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => WorkerProfilePage(worker: worker),
+                        builder: (_) =>
+                            WorkerProfilePage(worker: worker),
                       ),
                     );
                   },
