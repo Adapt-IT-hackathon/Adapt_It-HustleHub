@@ -15,6 +15,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 //welcome page
 void main() async {
@@ -3622,7 +3625,10 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
             itemCount: docs.length,
             separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
+
               final job = docs[index].data()! as Map<String, dynamic>;
+              String formattedDate = DateFormat.yMMMd().format((job['postedAt'] as Timestamp).toDate());
+
               return _JobCard(
                 jobTitle: job['title'] ?? 'No title',
                 jobType: job['type'] ?? 'N/A',
@@ -3971,8 +3977,8 @@ class _AddJobPageState extends State<AddJobPage> {
       'location': _locationController.text.trim(),
       'skills': _skillsController.text.trim().split(',').map((e) => e.trim()).toList(),
       'description': _descriptionController.text.trim(),
-      'postedBy': FirebaseAuth.instance.currentUser!.uid,
-
+      'postedBy': FirebaseAuth.instance.currentUser!.uid ,
+      'status': 'Active', // Default status
       'postedAt': FieldValue.serverTimestamp(), // Save timestamp
     });
 
