@@ -3971,7 +3971,8 @@ class _AddJobPageState extends State<AddJobPage> {
       'location': _locationController.text.trim(),
       'skills': _skillsController.text.trim().split(',').map((e) => e.trim()).toList(),
       'description': _descriptionController.text.trim(),
-      'postedBy': User, // Save the user ID
+      'postedBy': FirebaseAuth.instance.currentUser!.uid,
+
       'postedAt': FieldValue.serverTimestamp(), // Save timestamp
     });
 
