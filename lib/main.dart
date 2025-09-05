@@ -2142,7 +2142,7 @@ class _JobsPageState extends State<JobsPage> {
     try {
       final querySnapshot = await _firestore
           .collection('jobs')
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'Active')
           .orderBy('postedAt', descending: true)
           .get();
 
@@ -2947,7 +2947,6 @@ class TasksPage extends StatefulWidget {
   State<TasksPage> createState() => _TasksPageState();
 }
 
-
 class _TasksPageState extends State<TasksPage> {
   int _currentIndex = 0; // For bottom navigation
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -2965,12 +2964,13 @@ class _TasksPageState extends State<TasksPage> {
   Future<void> _fetchTasks() async {
     try {
       // For testing, use employee ID "1" - replace with _currentUser!.uid in production
-      final employeeId = _currentUser?.uid ?? "1"; // Use "1" for testing
+      final employeeId = _currentUser?.uid ?? "1";
+      final iid = 1; // Use "1" for testing
 
       QuerySnapshot querySnapshot = await _firestore
           .collection('jobs')
-          .where('employeeId', isEqualTo: employeeId)
-          .where('status', whereIn: ['scheduled', 'inProgress', 'completed'])
+          .where('employee', isEqualTo: iid)
+          .where('status', whereIn: ['Active', 'Inactive', 'In Progress', 'Completed'])
           .get();
 
       setState(() {
@@ -2985,39 +2985,46 @@ class _TasksPageState extends State<TasksPage> {
     }
   }
 
-  // Get current tasks (not completed)
+  // Get current tasks (Active, Inactive, In Progress)
   List<DocumentSnapshot> get _currentTasks {
-    return _tasks.where((task) => task['status'] != 'completed').toList();
+    return _tasks.where((task) =>
+    task['status'] == 'Active' ||
+        task['status'] == 'Inactive' ||
+        task['status'] == 'In Progress').toList();
   }
 
-  // Get completed tasks
+  // Get completed tasks (only Completed status)
   List<DocumentSnapshot> get _completedTasks {
-    return _tasks.where((task) => task['status'] == 'completed').toList();
+    return _tasks.where((task) => task['status'] == 'Completed').toList();
   }
 
   // Convert Firestore status string to TaskStatus enum
   TaskStatus _getStatusFromString(String status) {
     switch (status) {
-      case 'scheduled':
-        return TaskStatus.scheduled;
-      case 'inProgress':
+      case 'Active':
+        return TaskStatus.active;
+      case 'Inactive':
+        return TaskStatus.inactive;
+      case 'In Progress':
         return TaskStatus.inProgress;
-      case 'completed':
+      case 'Completed':
         return TaskStatus.completed;
       default:
-        return TaskStatus.scheduled;
+        return TaskStatus.active;
     }
   }
 
   // Convert TaskStatus enum to Firestore status string
   String _getStringFromStatus(TaskStatus status) {
     switch (status) {
-      case TaskStatus.scheduled:
-        return 'scheduled';
+      case TaskStatus.active:
+        return 'Active';
+      case TaskStatus.inactive:
+        return 'Inactive';
       case TaskStatus.inProgress:
-        return 'inProgress';
+        return 'In Progress';
       case TaskStatus.completed:
-        return 'completed';
+        return 'Completed';
     }
   }
 
@@ -3035,7 +3042,7 @@ class _TasksPageState extends State<TasksPage> {
       // Show confirmation message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Task marked as ${newStatus.toString().split('.').last}"),
+          content: Text("Task marked as ${_getStringFromStatus(newStatus)}"),
           backgroundColor: Colors.green.shade700,
         ),
       );
@@ -3093,9 +3100,9 @@ class _TasksPageState extends State<TasksPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatusCount(TaskStatus.scheduled, _currentTasks.where((t) => t['status'] == 'scheduled').length),
-                  _buildStatusCount(TaskStatus.inProgress, _currentTasks.where((t) => t['status'] == 'inProgress').length),
-                  _buildStatusCount(TaskStatus.completed, _completedTasks.length),
+                  _buildStatusCount('Active', _currentTasks.where((t) => t['status'] == 'Active').length, Colors.blue),
+                  _buildStatusCount('In Progress', _currentTasks.where((t) => t['status'] == 'In Progress').length, Colors.orange),
+                  _buildStatusCount('Completed', _completedTasks.length, Colors.green),
                 ],
               ),
             ),
@@ -3158,23 +3165,21 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildStatusCount(TaskStatus status, int count) {
-    Color color;
-    String text;
+  Widget _buildStatusCount(String status, int count, Color color) {
+    IconData icon;
 
     switch (status) {
-      case TaskStatus.scheduled:
-        color = Colors.orange;
-        text = 'Scheduled';
+      case 'Active':
+        icon = Icons.access_time;
         break;
-      case TaskStatus.inProgress:
-        color = Colors.blue;
-        text = 'In Progress';
+      case 'In Progress':
+        icon = Icons.build;
         break;
-      case TaskStatus.completed:
-        color = Colors.green;
-        text = 'Completed';
+      case 'Completed':
+        icon = Icons.check_circle;
         break;
+      default:
+        icon = Icons.help_outline;
     }
 
     return Column(
@@ -3196,7 +3201,7 @@ class _TasksPageState extends State<TasksPage> {
         ),
         const SizedBox(height: 4),
         Text(
-          text,
+          status,
           style: TextStyle(
             color: color,
             fontWeight: FontWeight.w500,
@@ -3244,7 +3249,7 @@ class _TasksPageState extends State<TasksPage> {
   }
 }
 
-enum TaskStatus { scheduled, inProgress, completed }
+enum TaskStatus { active, inactive, inProgress, completed }
 
 class TaskCard extends StatelessWidget {
   final DocumentSnapshot taskDoc;
@@ -3259,11 +3264,13 @@ class TaskCard extends StatelessWidget {
   // Helper method to get status color and icon
   Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
-      case 'scheduled':
-        return {'color': Colors.orange, 'icon': Icons.access_time};
-      case 'inProgress':
-        return {'color': Colors.blue, 'icon': Icons.build};
-      case 'completed':
+      case 'Active':
+        return {'color': Colors.blue, 'icon': Icons.access_time};
+      case 'Inactive':
+        return {'color': Colors.grey, 'icon': Icons.pause_circle};
+      case 'In Progress':
+        return {'color': Colors.orange, 'icon': Icons.build};
+      case 'Completed':
         return {'color': Colors.green, 'icon': Icons.check_circle};
       default:
         return {'color': Colors.grey, 'icon': Icons.help_outline};
@@ -3381,9 +3388,9 @@ class TaskCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    taskDoc['status'] == 'completed' ? 'Completed' : _formatDate(taskDoc['postedAt']),
+                    taskDoc['status'] == 'Completed' ? 'Completed' : _formatDate(taskDoc['postedAt']),
                     style: TextStyle(
-                      color: taskDoc['status'] == 'completed' ? Colors.green : const Color(0xFF1976D2),
+                      color: taskDoc['status'] == 'Completed' ? Colors.green : const Color(0xFF1976D2),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -3410,11 +3417,13 @@ class TaskDetailsBottomSheet extends StatelessWidget {
   // Helper method to get status color and icon
   Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
-      case 'scheduled':
-        return {'color': Colors.orange, 'icon': Icons.access_time};
-      case 'inProgress':
-        return {'color': Colors.blue, 'icon': Icons.build};
-      case 'completed':
+      case 'Active':
+        return {'color': Colors.blue, 'icon': Icons.access_time};
+      case 'Inactive':
+        return {'color': Colors.grey, 'icon': Icons.pause_circle};
+      case 'In Progress':
+        return {'color': Colors.orange, 'icon': Icons.build};
+      case 'Completed':
         return {'color': Colors.green, 'icon': Icons.check_circle};
       default:
         return {'color': Colors.grey, 'icon': Icons.help_outline};
@@ -3565,7 +3574,7 @@ class TaskDetailsBottomSheet extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Status Update Buttons
-            if (taskDoc['status'] != 'completed') ...[
+            if (taskDoc['status'] != 'Completed') ...[
               const Text(
                 "Update Status:",
                 style: TextStyle(
@@ -3577,36 +3586,36 @@ class TaskDetailsBottomSheet extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  if (taskDoc['status'] != 'scheduled')
+                  if (taskDoc['status'] != 'Active')
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => onStatusUpdate(taskDoc, TaskStatus.scheduled),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(color: Colors.orange),
-                        ),
-                        child: const Text(
-                          "Mark as Scheduled",
-                          style: TextStyle(color: Colors.orange),
-                        ),
-                      ),
-                    ),
-                  if (taskDoc['status'] != 'scheduled') const SizedBox(width: 8),
-                  if (taskDoc['status'] != 'inProgress')
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => onStatusUpdate(taskDoc, TaskStatus.inProgress),
+                        onPressed: () => onStatusUpdate(taskDoc, TaskStatus.active),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           side: const BorderSide(color: Colors.blue),
                         ),
                         child: const Text(
-                          "Start Progress",
+                          "Mark as Active",
                           style: TextStyle(color: Colors.blue),
                         ),
                       ),
                     ),
-                  if (taskDoc['status'] != 'inProgress') const SizedBox(width: 8),
+                  if (taskDoc['status'] != 'Active') const SizedBox(width: 8),
+                  if (taskDoc['status'] != 'In Progress')
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => onStatusUpdate(taskDoc, TaskStatus.inProgress),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: Colors.orange),
+                        ),
+                        child: const Text(
+                          "Start Progress",
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ),
+                  if (taskDoc['status'] != 'In Progress') const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => onStatusUpdate(taskDoc, TaskStatus.completed),
@@ -3648,8 +3657,6 @@ class TaskDetailsBottomSheet extends StatelessWidget {
     );
   }
 }
-
-
 
 class ServiceDashboard extends StatefulWidget {
   const ServiceDashboard({super.key});
@@ -4723,27 +4730,19 @@ class _AddJobPageState extends State<AddJobPage> {
   String _selectedStatus = 'Active'; // Default status
 
   // List of available skills to choose from
-  final List<String> _availableSkills = [
-    'Flutter',
-    'Dart',
-    'Firebase',
-    'UI/UX Design',
-    'JavaScript',
-    'React',
-    'Node.js',
-    'Python',
-    'Java',
-    'Swift',
-    'Kotlin',
-    'AWS',
-    'Azure',
-    'Git',
-    'REST API',
-    'GraphQL',
-    'MongoDB',
-    'SQL',
-    'Agile',
-    'CI/CD'
+// List of available skills to choose from
+  final List<String> _skillsList = [
+    "Washing",
+    "Gardening",
+    "Painting",
+    "Plumbing",
+    "Electrical",
+    "Cooking",
+    "Tutoring",
+    "Cleaning",
+    "Carpentry",
+    "Delivery",
+    "Other",
   ];
 
   // Set to store selected skills
@@ -4861,7 +4860,7 @@ class _AddJobPageState extends State<AddJobPage> {
               Wrap(
                 spacing: 8.0,
                 runSpacing: 4.0,
-                children: _availableSkills.map((skill) {
+                children: _skillsList.map((skill) {
                   return FilterChip(
                     label: Text(skill),
                     selected: _selectedSkills.contains(skill),
