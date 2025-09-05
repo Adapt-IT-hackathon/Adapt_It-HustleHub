@@ -3699,12 +3699,8 @@ class _AddJobPageState extends State<AddJobPage> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // Process the job posting
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Job posted successfully!')),
-                    );
-                    Navigator.pop(context);
-                  }
+                _postJobToFirestore(); // ✅ Call the method here
+              }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
@@ -3721,6 +3717,39 @@ class _AddJobPageState extends State<AddJobPage> {
       ),
     );
   }
+  Future<void> _postJobToFirestore() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+  //  if (user == null) {
+   //   ScaffoldMessenger.of(context).showSnackBar(
+     //   const SnackBar(content: Text("You must be logged in to post a job.")),
+     // );
+     // return;
+   // }
+
+    await FirebaseFirestore.instance.collection('jobs').add({
+      'title': _titleController.text.trim(),
+      'type': _selectedJobType,
+      'location': _locationController.text.trim(),
+      'skills': _skillsController.text.trim().split(',').map((e) => e.trim()).toList(),
+      'description': _descriptionController.text.trim(),
+    //  'postedBy': user.uid, // Save the user ID
+      'postedAt': FieldValue.serverTimestamp(), // Save timestamp
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("✅ Job posted successfully!")),
+    );
+
+    Navigator.pop(context); // Go back to previous page
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("❌ Failed to post job: $e")),
+    );
+  }
+}
+
 }
 
 // Worker Search Page
