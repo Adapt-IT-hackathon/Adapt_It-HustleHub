@@ -1730,7 +1730,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: _nameController,
-                            enabled: _isEditing,
+                            enabled:false,
                             decoration: InputDecoration(
                               labelText: "First Name",
                               labelStyle: const TextStyle(color: Color(0xFF1976D2)),
@@ -1750,7 +1750,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: _surnameController,
-                            enabled: _isEditing,
+                            enabled: false,
                             decoration: InputDecoration(
                               labelText: "Surname",
                               labelStyle: const TextStyle(color: Color(0xFF1976D2)),
@@ -3253,7 +3253,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         backgroundColor: const Color(0xFF1976D2),
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: _buildBottomAppBar(),
+
     );
   }
 
