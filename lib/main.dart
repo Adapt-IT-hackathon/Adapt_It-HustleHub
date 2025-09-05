@@ -1171,7 +1171,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   const Text("Don't have an account?"),
                   TextButton(
                     onPressed: () {
-                      // Navigate to SignUpPage
+                      Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignUpPage()),
+                    );
                     },
                     child: const Text(
                       "Sign Up",
@@ -1217,45 +1220,51 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       );
 }
 
+// Small role option widget
 class _RoleOption extends StatelessWidget {
   final String title;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _RoleOption({
-    required this.title,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _RoleOption(
+      {required this.title,
+      required this.icon,
+      required this.isSelected,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1976D2) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? const Color(0xFF1976D2) : Colors.grey.shade300, width: 2),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 3)),
-          ],
+          color: isSelected ? Colors.blue.shade100 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isSelected ? Colors.blue : Colors.grey.shade300, width: 2),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 32, color: isSelected ? Colors.white : const Color(0xFF1976D2)),
+            Icon(icon,
+                size: 28,
+                color: isSelected ? Colors.blue : Colors.grey.shade600),
             const SizedBox(height: 6),
-            Text(title, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF1976D2), fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey.shade600,
+                  fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+
 
 
 
@@ -1491,14 +1500,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
         ),
         const SizedBox(width: 15),
-        Expanded(
-          child: _StatCard(
-            title: 'Messages',
-            value: '5',
-            icon: Icons.message,
-            color: Colors.purple,
-          ),
-        ),
+       
       ],
     );
   }
@@ -1955,7 +1957,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: _nameController,
-                            enabled: _isEditing,
+                            enabled:false,
                             decoration: InputDecoration(
                               labelText: "First Name",
                               labelStyle: const TextStyle(color: Color(0xFF1976D2)),
@@ -1975,7 +1977,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: _surnameController,
-                            enabled: _isEditing,
+                            enabled: false,
                             decoration: InputDecoration(
                               labelText: "Surname",
                               labelStyle: const TextStyle(color: Color(0xFF1976D2)),
@@ -3478,7 +3480,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         backgroundColor: const Color(0xFF1976D2),
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: _buildBottomAppBar(),
+
     );
   }
 
@@ -3551,86 +3553,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         ],
         border: Border.all(color: Colors.grey.shade100),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your Service Rating',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1976D2),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              // Rating display
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomRatingBar(
-                    rating: _serviceRating,
-                    itemSize: 30,
-                    onRatingChanged: (rating) {
-                      // Rating would typically be updated by clients
-                    },
-                    ignoreGestures: true,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '$_serviceRating/5.0',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Progress indicator
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: CircularProgressIndicator(
-                      value: _serviceRating / 5,
-                      strokeWidth: 8,
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
-                    ),
-                  ),
-                  Text(
-                    '${(_serviceRating / 5 * 100).round()}%',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1976D2),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          LinearProgressIndicator(
-            value: _serviceRating / 5,
-            backgroundColor: Colors.grey.shade200,
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Maintain high ratings to attract more clients!',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
+
     );
   }
 
@@ -4003,12 +3926,8 @@ class _AddJobPageState extends State<AddJobPage> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // Process the job posting
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Job posted successfully!')),
-                    );
-                    Navigator.pop(context);
-                  }
+                _postJobToFirestore(); // ✅ Call the method here
+              }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
@@ -4025,6 +3944,39 @@ class _AddJobPageState extends State<AddJobPage> {
       ),
     );
   }
+  Future<void> _postJobToFirestore() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+  //  if (user == null) {
+   //   ScaffoldMessenger.of(context).showSnackBar(
+     //   const SnackBar(content: Text("You must be logged in to post a job.")),
+     // );
+     // return;
+   // }
+
+    await FirebaseFirestore.instance.collection('jobs').add({
+      'title': _titleController.text.trim(),
+      'type': _selectedJobType,
+      'location': _locationController.text.trim(),
+      'skills': _skillsController.text.trim().split(',').map((e) => e.trim()).toList(),
+      'description': _descriptionController.text.trim(),
+    //  'postedBy': user.uid, // Save the user ID
+      'postedAt': FieldValue.serverTimestamp(), // Save timestamp
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("✅ Job posted successfully!")),
+    );
+
+    Navigator.pop(context); // Go back to previous page
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("❌ Failed to post job: $e")),
+    );
+  }
+}
+
 }
 
 // Worker Search Page
