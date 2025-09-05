@@ -1326,7 +1326,8 @@ class _RoleOption extends StatelessWidget {
 }
 
 
-// Make sure you import your other pages & custom widgets like CustomRatingBar, JobsPage, TasksPage, ProfilePage
+
+
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -1337,17 +1338,170 @@ class ClientDashboard extends StatefulWidget {
 
 class _ClientDashboardState extends State<ClientDashboard> {
   int _currentIndex = 0;
-  final double _userRating = 4.7; // Example rating
-  final int _completedJobs = 12; // Example completed jobs
+  double _userRating = 0.0;
+  int _completedJobs = 0;
+  int _pendingJobs = 0;
+  String _username = "User";
+  bool _isLoading = true;
 
-  Future<String> getUsername() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return "User";
-    final dat = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    var doc = dat.data() as Map<String, dynamic>?;
-    if (doc == null) return "User";
-    final String name = doc['fullName'] ?? "User";
-    return name;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      // Get user data and jobs data in parallel
+      await Future.wait([
+        _getUsername(),
+        _getJobsData(),
+      ]);
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error loading dashboard data: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _getUsername() async {
+    if (_currentUser == null) return;
+
+    try {
+      final doc = await _firestore.collection('users').doc(_currentUser!.uid).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('fullName')) {
+          setState(() {
+            _username = data['fullName'] ?? "User";
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching username: $e");
+    }
+  }
+
+  Future<void> _getJobsData() async {
+    if (_currentUser == null) return;
+
+    try {
+      // Get all jobs where current user is the client
+      // Try different possible field names for client identification
+      final List<String> possibleClientFields = ['client', 'clientId', 'userId', 'postedBy', 'clientID'];
+
+      QuerySnapshot? querySnapshot;
+      String usedField = '';
+
+      for (final field in possibleClientFields) {
+        try {
+          querySnapshot = await _firestore
+              .collection('jobs')
+              .where(field, isEqualTo: _currentUser!.uid)
+              .get();
+
+          if (querySnapshot.docs.isNotEmpty) {
+            usedField = field;
+            break;
+          }
+        } catch (e) {
+          print("Tried field $field but failed: $e");
+          continue;
+        }
+      }
+
+      // If no jobs found with any field, try without filtering by client
+      if (querySnapshot == null || querySnapshot.docs.isEmpty) {
+        querySnapshot = await _firestore.collection('jobs').get();
+      }
+
+      int completed = 0;
+      int pending = 0;
+      double totalRating = 0.0;
+      int ratedJobs = 0;
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Check if this job belongs to the current user
+        final isUserJob = _isUserJob(data);
+        if (!isUserJob) continue;
+
+        final status = data['status']?.toString() ?? '';
+
+        if (status == 'Completed') {
+          completed++;
+
+          // Check if job has a rating - try different field names
+          final rating = _getRatingFromData(data);
+          if (rating > 0) {
+            totalRating += rating;
+            ratedJobs++;
+          }
+        } else if (status == 'Active' || status == 'In Progress' || status == 'Inactive' || status == 'Pending') {
+          pending++;
+        }
+      }
+
+      // Calculate average rating
+      double averageRating = ratedJobs > 0 ? totalRating / ratedJobs : 0.0;
+
+      setState(() {
+        _completedJobs = completed;
+        _pendingJobs = pending;
+        _userRating = double.parse(averageRating.toStringAsFixed(1));
+      });
+
+      print("Found $completed completed jobs and $pending pending jobs with average rating: $averageRating");
+
+    } catch (e) {
+      print("Error fetching jobs data: $e");
+      setState(() {
+        _completedJobs = 0;
+        _pendingJobs = 0;
+        _userRating = 0.0;
+      });
+    }
+  }
+
+  bool _isUserJob(Map<String, dynamic> data) {
+    // Check if this job belongs to the current user using various field names
+    final possibleClientFields = ['client', 'clientId', 'userId', 'postedBy', 'clientID'];
+
+    for (final field in possibleClientFields) {
+      if (data.containsKey(field) && data[field] == _currentUser?.uid) {
+        return true;
+      }
+    }
+
+    // If no client field found, assume it's the user's job
+    return true;
+  }
+
+  double _getRatingFromData(Map<String, dynamic> data) {
+    // Try different possible field names for rating
+    final possibleRatingFields = ['rating', 'clientRating', 'userRating', 'reviewScore'];
+
+    for (final field in possibleRatingFields) {
+      if (data.containsKey(field)) {
+        final rating = data[field];
+        if (rating is num) {
+          return rating.toDouble();
+        } else if (rating is String) {
+          return double.tryParse(rating) ?? 0.0;
+        }
+      }
+    }
+
+    return 0.0;
   }
 
   @override
@@ -1370,7 +1524,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1423,38 +1579,13 @@ class _ClientDashboardState extends State<ClientDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FutureBuilder<String>(
-                  future: getUsername(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text(
-                        "Loading...",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    } else if (snapshot.hasError) {
-                      return const Text(
-                        "Error loading name",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    } else {
-                      return Text(
-                        "Welcome back, ${snapshot.data}!",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    }
-                  },
+                Text(
+                  "Welcome back, $_username!",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
@@ -1521,6 +1652,13 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  Text(
+                    'Based on $_completedJobs completed jobs',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ],
               ),
               const Spacer(),
@@ -1539,7 +1677,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                     ),
                   ),
                   Text(
-                    '${(_userRating / 5 * 100).round()}%',
+                    '${((_userRating / 5) * 100).round()}%',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1976D2),
@@ -1558,9 +1696,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
             borderRadius: BorderRadius.circular(3),
           ),
           const SizedBox(height: 5),
-          const Text(
-            'Keep getting rated to improve your ranking!',
-            style: TextStyle(
+          Text(
+            _userRating > 0
+                ? 'Keep getting rated to improve your ranking!'
+                : 'Complete jobs to get ratings from service providers!',
+            style: const TextStyle(
               fontSize: 12,
               color: Colors.grey,
             ),
@@ -1584,13 +1724,21 @@ class _ClientDashboardState extends State<ClientDashboard> {
         const SizedBox(width: 15),
         Expanded(
           child: _StatCard(
-            title: 'Pending Requests',
-            value: '3',
+            title: 'Pending Jobs',
+            value: _pendingJobs.toString(),
             icon: Icons.access_time,
             color: Colors.orange,
           ),
         ),
         const SizedBox(width: 15),
+        Expanded(
+          child: _StatCard(
+            title: 'Total Jobs',
+            value: (_completedJobs + _pendingJobs).toString(),
+            icon: Icons.work,
+            color: const Color(0xFF1976D2),
+          ),
+        ),
       ],
     );
   }
@@ -1656,7 +1804,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
   }
 }
 
-// Example stat card widget (make sure you have this)
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -1710,7 +1857,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// Custom Rating Bar Widget
 class CustomRatingBar extends StatelessWidget {
   final double rating;
   final double itemSize;
@@ -1763,6 +1909,7 @@ class CustomRatingBar extends StatelessWidget {
     );
   }
 }
+
 
 // Custom widget for statistics cards
 //widget for map markers
@@ -2108,41 +2255,20 @@ class JobsPage extends StatefulWidget {
 class _JobsPageState extends State<JobsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   String _searchQuery = '';
-  List<String> _userSkills = [];
   List<Job> _allJobs = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserSkills();
     _fetchJobs();
-  }
-
-  Future<void> _fetchUserSkills() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        final doc = await _firestore.collection('workers').doc(user.uid).get();
-        if (doc.exists) {
-          final data = doc.data()!;
-          setState(() {
-            _userSkills = List<String>.from(data['skills'] ?? []);
-          });
-        }
-      }
-    } catch (e) {
-      print('Error fetching user skills: $e');
-    }
   }
 
   Future<void> _fetchJobs() async {
     try {
       final querySnapshot = await _firestore
           .collection('jobs')
-          .where('status', isEqualTo: 'Active')
           .orderBy('postedAt', descending: true)
           .get();
 
@@ -2154,10 +2280,12 @@ class _JobsPageState extends State<JobsPage> {
           description: data['description'] ?? 'No description available',
           clientName: data['postedByName'] ?? 'Unknown Client',
           location: data['location'] ?? 'Location not specified',
-          requiredSkills: List<String>.from(data['requiredSkills'] ?? []),
+          requiredSkills: List<String>.from(data['skills'] ?? []),
           datePosted: _formatDate(data['postedAt']),
           budget: (data['budget'] ?? 0.0).toDouble(),
           postedBy: data['postedBy'] ?? '',
+          type: data['type'] ?? 'Not specified',
+          employeeCount: (data['employee'] ?? 1).toInt(),
         );
       }).toList();
 
@@ -2194,76 +2322,39 @@ class _JobsPageState extends State<JobsPage> {
     return 'Unknown date';
   }
 
-  // Case-insensitive skill matching
-  bool _skillsMatch(String jobSkill, String userSkill) {
-    return jobSkill.toLowerCase().trim() == userSkill.toLowerCase().trim();
-  }
-
   List<Job> get _filteredJobs {
     if (_searchQuery.isEmpty) {
-      // Show jobs that match AT LEAST ONE of the user's skills (case-insensitive)
-      return _allJobs.where((job) =>
-          job.requiredSkills.any((jobSkill) =>
-              _userSkills.any((userSkill) => _skillsMatch(jobSkill, userSkill))
-          )
-      ).toList();
+      return _allJobs;
     } else {
-      // Show jobs that match search query AND at least one skill (case-insensitive)
       return _allJobs.where((job) =>
-      job.title.toLowerCase().contains(_searchQuery.toLowerCase()) &&
-          job.requiredSkills.any((jobSkill) =>
-              _userSkills.any((userSkill) => _skillsMatch(jobSkill, userSkill))
-          )
-      ).toList();
+      job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          job.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          job.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          job.type.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
     }
-  }
-
-  // Get matching skills count for sorting (most matches first) - case insensitive
-  int _getMatchingSkillsCount(Job job) {
-    return job.requiredSkills.where((jobSkill) =>
-        _userSkills.any((userSkill) => _skillsMatch(jobSkill, userSkill))
-    ).length;
-  }
-
-  // Get actual matching skills list - case insensitive
-  List<String> _getMatchingSkills(Job job) {
-    return job.requiredSkills.where((jobSkill) =>
-        _userSkills.any((userSkill) => _skillsMatch(jobSkill, userSkill))
-    ).toList();
-  }
-
-  // Sort jobs by number of matching skills (descending)
-  List<Job> get _sortedJobs {
-    return _filteredJobs..sort((a, b) {
-      final aMatches = _getMatchingSkillsCount(a);
-      final bMatches = _getMatchingSkillsCount(b);
-      return bMatches.compareTo(aMatches); // Descending order
-    });
   }
 
   void _showJobDetails(Job job) {
     showModalBottomSheet(
-      context: context,  //
+      context: context,
       isScrollControlled: true,
       builder: (context) => JobDetailsBottomSheet(
         job: job,
-        matchingSkills: _getMatchingSkills(job),
         onApply: (proposedPrice) => _applyForJob(job, proposedPrice),
       ),
     );
-
   }
 
   Future<void> _applyForJob(Job job, double proposedPrice) async {
     try {
-      final user = _auth.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         // Create a job application/request
         await _firestore.collection('requests').add({
           'jobId': job.id,
           'jobTitle': job.title,
           'workerId': user.uid,
-          'workerName': _userSkills.isNotEmpty ? 'Professional Worker' : 'User',
+          'workerName': 'User', // You might want to get the actual user name
           'clientId': job.postedBy,
           'clientName': job.clientName,
           'proposedPrice': proposedPrice,
@@ -2271,7 +2362,6 @@ class _JobsPageState extends State<JobsPage> {
           'appliedAt': FieldValue.serverTimestamp(),
           'location': job.location,
           'requiredSkills': job.requiredSkills,
-          'matchingSkills': _getMatchingSkills(job),
         });
 
         // Show success message
@@ -2342,7 +2432,7 @@ class _JobsPageState extends State<JobsPage> {
                     });
                   },
                   decoration: InputDecoration(
-                    hintText: "Search jobs by title...",
+                    hintText: "Search jobs...",
                     prefixIcon: const Icon(Icons.search, color: Color(0xFF1976D2)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -2359,32 +2449,6 @@ class _JobsPageState extends State<JobsPage> {
                 ),
               ),
             ),
-
-            // Skills Filter Chip
-            if (_userSkills.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      const Text(
-                        "Your skills:",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      ..._userSkills.map((skill) => Chip(
-                        label: Text(skill),
-                        backgroundColor: const Color(0xFF1976D2),
-                        labelStyle: const TextStyle(color: Colors.white),
-                      )),
-                    ],
-                  ),
-                ),
-              ),
 
             const SizedBox(height: 16),
 
@@ -2404,7 +2468,7 @@ class _JobsPageState extends State<JobsPage> {
                     valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
                   ),
                 )
-                    : _sortedJobs.isEmpty
+                    : _filteredJobs.isEmpty
                     ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2413,7 +2477,7 @@ class _JobsPageState extends State<JobsPage> {
                       const SizedBox(height: 16),
                       Text(
                         _searchQuery.isEmpty
-                            ? "No jobs matching your skills"
+                            ? "No jobs available"
                             : "No jobs found for '$_searchQuery'",
                         style: const TextStyle(
                           fontSize: 18,
@@ -2422,7 +2486,7 @@ class _JobsPageState extends State<JobsPage> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        "Try updating your skills or check back later",
+                        "Check back later for new job postings",
                         style: TextStyle(color: Colors.grey),
                       ),
                     ],
@@ -2430,15 +2494,12 @@ class _JobsPageState extends State<JobsPage> {
                 )
                     : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _sortedJobs.length,
+                  itemCount: _filteredJobs.length,
                   itemBuilder: (context, index) {
-                    final job = _sortedJobs[index];
-                    final matchCount = _getMatchingSkillsCount(job);
-                    final matchingSkills = _getMatchingSkills(job);
+                    final job = _filteredJobs[index];
 
                     return JobCard(
                       job: job,
-                      matchCount: matchCount,
                       onTap: () => _showJobDetails(job),
                     );
                   },
@@ -2462,6 +2523,8 @@ class Job {
   final String datePosted;
   final double budget;
   final String postedBy;
+  final String type;
+  final int employeeCount;
 
   Job({
     required this.id,
@@ -2473,17 +2536,17 @@ class Job {
     required this.datePosted,
     required this.budget,
     required this.postedBy,
+    required this.type,
+    required this.employeeCount,
   });
 }
-// Add this JobCard widget before your _JobsPageState class
+
 class JobCard extends StatelessWidget {
   final Job job;
-  final int matchCount;
   final VoidCallback onTap;
 
   const JobCard({
     required this.job,
-    required this.matchCount,
     required this.onTap,
     Key? key,
   }) : super(key: key);
@@ -2528,38 +2591,13 @@ class JobCard extends StatelessWidget {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      job.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white),
-                    ),
-                    child: Text(
-                      "$matchCount skills match",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                job.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
             // Job details section
@@ -2569,11 +2607,38 @@ class JobCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${job.location} • ${job.budget.toStringAsFixed(2)}',
+                    '${job.location} • \$${job.budget.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    job.type,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF1976D2),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    job.description.length > 100
+                        ? '${job.description.substring(0, 100)}...'
+                        : job.description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: job.requiredSkills.map((skill) => Chip(
+                      label: Text(skill),
+                      backgroundColor: const Color(0xFFE3F2FD),
+                      labelStyle: const TextStyle(color: Color(0xFF1976D2)),
+                    )).toList(),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -2605,21 +2670,13 @@ class JobCard extends StatelessWidget {
   }
 }
 
-// Also make sure you have a Job class defined like this:
-
-
-// Then in your ListView.builder, use the correct widget:
-
-
 class JobDetailsBottomSheet extends StatefulWidget {
   final Job job;
-  final List<String> matchingSkills;
   final Function(double) onApply;
 
   const JobDetailsBottomSheet({
     super.key,
     required this.job,
-    required this.matchingSkills,
     required this.onApply,
   });
 
@@ -2673,33 +2730,14 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
               ),
             ),
 
-            // Matching skills info
-            if (widget.matchingSkills.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 24),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'You match ${widget.matchingSkills.length} required skill${widget.matchingSkills.length > 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 16),
+            Text(
+              widget.job.type,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
               ),
-            ],
+            ),
 
             const SizedBox(height: 16),
 
@@ -2843,20 +2881,8 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
               runSpacing: 8,
               children: widget.job.requiredSkills.map((skill) => Chip(
                 label: Text(skill),
-                backgroundColor: widget.matchingSkills.any((match) =>
-                match.toLowerCase().trim() == skill.toLowerCase().trim())
-                    ? Colors.green.shade100
-                    : const Color(0xFFE3F2FD),
-                labelStyle: TextStyle(
-                  color: widget.matchingSkills.any((match) =>
-                  match.toLowerCase().trim() == skill.toLowerCase().trim())
-                      ? Colors.green.shade800
-                      : const Color(0xFF1976D2),
-                  fontWeight: widget.matchingSkills.any((match) =>
-                  match.toLowerCase().trim() == skill.toLowerCase().trim())
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
+                backgroundColor: const Color(0xFFE3F2FD),
+                labelStyle: const TextStyle(color: Color(0xFF1976D2)),
               )).toList(),
             ),
             const SizedBox(height: 20),
@@ -2939,7 +2965,6 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
     super.dispose();
   }
 }
-
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
 
