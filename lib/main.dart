@@ -1398,10 +1398,6 @@ class _RoleOption extends StatelessWidget {
   }
 }
 
-
-
-
-
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
 
@@ -3253,7 +3249,7 @@ class _TasksPageState extends State<TasksPage> {
   Future<void> _fetchTasks() async {
     try {
       // For testing, use employee ID "1" - replace with _currentUser!.uid in production
-      final employeeId = _currentUser?.uid ;
+      final employeeId = _currentUser?.uid ??'1';
 
 
       QuerySnapshot querySnapshot = await _firestore
@@ -3277,9 +3273,7 @@ class _TasksPageState extends State<TasksPage> {
   // Get current tasks (Active, Inactive, In Progress)
   List<DocumentSnapshot> get _currentTasks {
     return _tasks.where((task) =>
-    task['status'] == 'Active' ||
-        task['status'] == 'Inactive' ||
-        task['status'] == 'In Progress').toList();
+    task['status'] == 'Active').toList();
   }
 
   // Get completed tasks (only Completed status)
@@ -4427,7 +4421,6 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
 }
 
 
-
 class _JobCard extends StatelessWidget {
   final String jobTitle;
   final String jobType;
@@ -4531,6 +4524,7 @@ class _JobCard extends StatelessWidget {
   }
 }
 
+
 class WorkerJobsPage extends StatefulWidget {
   const WorkerJobsPage({super.key});
 
@@ -4540,6 +4534,8 @@ class WorkerJobsPage extends StatefulWidget {
 
 class _WorkerJobsPageState extends State<WorkerJobsPage> {
   List<Map<String, dynamic>> _jobRequests = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -4548,74 +4544,226 @@ class _WorkerJobsPageState extends State<WorkerJobsPage> {
   }
 
   Future<void> _loadJobRequests() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "User not authenticated";
+      });
+      return;
+    }
 
     try {
-      // First, get the worker document to access their job requests
+      debugPrint("Loading requests for worker: ${user.uid}");
+
       final workerDoc = await FirebaseFirestore.instance
           .collection('workers')
           .doc(user.uid)
           .get();
 
-      if (workerDoc.exists) {
-        final workerData = workerDoc.data() as Map<String, dynamic>;
-
-        // Get the list of job request IDs from the worker document
-        final List<dynamic> jobRequestIds = workerData['jobRequests'] ?? [];
-
-        if (jobRequestIds.isNotEmpty) {
-          // Fetch all job requests from the jobRequests collection
-          final QuerySnapshot snapshot = await FirebaseFirestore.instance
-              .collection('jobRequests')
-              .where(FieldPath.documentId, whereIn: jobRequestIds)
-              .get();
-
-          // Debug: Print the fetched documents
-          print('Fetched ${snapshot.docs.length} job requests');
-          snapshot.docs.forEach((doc) {
-            print('Job ID: ${doc.id}');
-            print('Job Data: ${doc.data()}');
-          });
-
-          setState(() {
-            _jobRequests = snapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return {
-                'id': doc.id,
-                ...data,
-              };
-            }).toList();
-          });
-        } else {
-          print('No job request IDs found in worker document');
-          setState(() {
-            _jobRequests = [];
-          });
-        }
-      } else {
-        print('Worker document does not exist for user: ${user.uid}');
+      if (!workerDoc.exists) {
+        setState(() {
+          _errorMessage = "Worker profile not found";
+          _jobRequests = [];
+        });
+        return;
       }
-    } catch (e) {
-      print('Error loading job requests: $e');
+
+      final workerData = workerDoc.data() as Map<String, dynamic>? ?? {};
+      final List<dynamic> requestIds = workerData['requests'] ?? [];
+
+      if (requestIds.isEmpty) {
+        setState(() {
+          _jobRequests = [];
+        });
+      } else {
+        // watch out: `whereIn` supports max 10 items per query
+        final QuerySnapshot snapshot = await FirebaseFirestore.instance
+            .collection('requests')
+            .where(FieldPath.documentId, whereIn: requestIds)
+            .get();
+
+        debugPrint('Fetched ${snapshot.docs.length} requests');
+
+        setState(() {
+          _jobRequests = snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return {
+              'id': doc.id,
+              ...data,
+            };
+          }).toList();
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error loading requests: $e\n$st');
+      setState(() {
+        _errorMessage = "Failed to load job requests";
+        _jobRequests = [];
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _updateJobStatus(String jobId, String status) async {
+  // update a single request document (requests collection)
+  Future<void> _updateRequestStatus(String requestId, String status) async {
+    if (requestId.isEmpty) {
+      debugPrint("RequestId empty - cannot update request status");
+      throw Exception("Missing requestId");
+    }
+
+    final requestRef =
+    FirebaseFirestore.instance.collection('requests').doc(requestId);
+
+    final snap = await requestRef.get();
+    if (!snap.exists) {
+      debugPrint("Request doc $requestId does not exist");
+      throw Exception("Request document not found");
+    }
+
+    await requestRef.update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    debugPrint("✅ Request $requestId updated -> $status");
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Request updated to $status")),
+      );
+    }
+  }
+
+  // update a single job document (jobs collection)
+  // workerId: pass the worker uid when assigning; set removeEmployee=true to delete employee field
+  Future<void> _updateJobStatus(String jobId, String status,
+      {String? workerId, bool removeEmployee = false}) async {
+    if (jobId.isEmpty) {
+      debugPrint("jobId empty - skipping job update");
+      throw Exception("Missing jobId");
+    }
+
+    final jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
+    final snap = await jobRef.get();
+    if (!snap.exists) {
+      debugPrint("Job doc $jobId does not exist");
+      throw Exception("Job document not found");
+    }
+
+    final Map<String, dynamic> updateData = {
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (status.toLowerCase() == 'Active' && workerId != null && workerId.isNotEmpty) {
+      updateData['employee'] = workerId;
+    } else if (removeEmployee) {
+      updateData['employee'] = FieldValue.delete();
+    }
+
+    await jobRef.update(updateData);
+
+    debugPrint("✅ Job $jobId updated -> $status (employee: ${workerId ?? (removeEmployee ? 'removed' : 'no-change')})");
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Job updated to $status")),
+      );
+    }
+  }
+
+  // Accept handler: calls both update methods
+  Future<void> _acceptJob(String requestId, String jobId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    debugPrint("👉 Accept pressed for requestId=$requestId jobId=$jobId");
+
     try {
-      // Update the job status in the jobRequests collection
-      await FirebaseFirestore.instance
-          .collection('jobRequests')
-          .doc(jobId)
-          .update({'status': status});
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("User not authenticated");
 
-      // Reload the job requests
-      _loadJobRequests();
-    } catch (e) {
-      print('Error updating job status: $e');
+      // 1) Update the request status
+      await _updateRequestStatus(requestId, 'accepted');
+
+      // 2) Update the job status (if jobId available)
+      if (jobId.isNotEmpty) {
+        await _updateJobStatus(jobId, 'Active', workerId: user.uid);
+      } else {
+        debugPrint("No jobId present on request $requestId - only request updated");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Request accepted, but jobId was missing")),
+          );
+        }
+      }
+
+      // reload list
+      await _loadJobRequests();
+    } catch (e, st) {
+      debugPrint("❌ Accept failed: $e\n$st");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to accept job: ${e.toString()}")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
+  // Decline handler: update request and reset job
+  Future<void> _declineJob(String requestId, String jobId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    debugPrint("👉 Decline pressed for requestId=$requestId jobId=$jobId");
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("User not authenticated");
+
+      // 1) Update request status
+      await _updateRequestStatus(requestId, 'declined');
+
+      // 2) Reset job: mark as Available and remove employee if present
+      if (jobId.isNotEmpty) {
+        await _updateJobStatus(jobId, 'Available', removeEmployee: true);
+      } else {
+        debugPrint("No jobId present on request $requestId - only request updated");
+      }
+
+      await _loadJobRequests();
+    } catch (e, st) {
+      debugPrint("❌ Decline failed: $e\n$st");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to decline job: ${e.toString()}")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -4623,131 +4771,87 @@ class _WorkerJobsPageState extends State<WorkerJobsPage> {
         title: const Text("My Job Requests"),
         backgroundColor: const Color(0xFF1976D2),
       ),
-      body: _jobRequests.isEmpty
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(child: Text(_errorMessage!))
+          : _jobRequests.isEmpty
           ? const Center(child: Text("No job requests yet"))
-          : ListView.builder(
-        itemCount: _jobRequests.length,
-        itemBuilder: (context, index) {
-          final job = _jobRequests[index];
-          Future<void> updateEmployee(String jobId, int newEmployeeId) async {
-            try {
-              // Reference to the specific job document
-              DocumentReference jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
+          : RefreshIndicator(
+        onRefresh: _loadJobRequests,
+        child: ListView.builder(
+          itemCount: _jobRequests.length,
+          itemBuilder: (context, index) {
+            final job = _jobRequests[index];
 
-              // Update the 'employee' field
-              await jobRef.update({
-                'employee': newEmployeeId,
-              });
+            final requestId = job['id'] ?? '';
+            final jobId = job['jobId'] ?? '';
+            final statusRaw = job['status'] ?? 'unknown';
+            final status = statusRaw.toString();
+            final isPending = status.toLowerCase() == 'pending';
 
-              print('Employee ID updated successfully!');
-            } catch (e) {
-              print('Failed to update employee ID: $e');
+            final title = job['title'] ?? 'No Title';
+            final description = job['description'] ?? 'No description';
+            final location = job['location'] ?? 'Unknown location';
+            final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'No skills specified';
+
+            Timestamp? timestamp = job['createdAt'] as Timestamp?;
+            if (timestamp == null) {
+              timestamp = job['postedAt'] as Timestamp?;
             }
-          }
+            final dateString = timestamp != null
+                ? DateFormat('MMM dd, yyyy').format(timestamp.toDate())
+                : 'Unknown date';
 
-          // Safely extract data with fallbacks
-          final jobId = job['id'] ?? 'N/A';
-          final status = job['status'] ?? 'Unknown';
-          final title = job['title'] ?? 'No Title';
-          final description = job['description'] ?? 'No description';
-          final location = job['location'] ?? 'Unknown location';
-          final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'No skills specified';
-
-          // Handle timestamp - try both 'createdAt' and 'postedAt'
-          Timestamp? timestamp = job['createdAt'] as Timestamp?;
-          if (timestamp == null) {
-            timestamp = job['postedAt'] as Timestamp?;
-          }
-          final dateString = timestamp != null
-              ? DateFormat('MMM dd, yyyy').format(timestamp.toDate())
-              : 'Unknown date';
-
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(description),
-                  const SizedBox(height: 8),
-                  Text("Location: $location"),
-                  const SizedBox(height: 8),
-                  Text("Skills: $skills"),
-                  const SizedBox(height: 8),
-                  Text("Status: $status"),
-                  Text("Posted: $dateString"),
-                  const SizedBox(height: 10),
-
-                  if (status == 'pending' || status == 'Pending')
-                    Row(
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _updateJobStatus(jobId, 'accepted'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(description),
+                    const SizedBox(height: 8),
+                    Text("Location: $location"),
+                    const SizedBox(height: 8),
+                    Text("Skills: $skills"),
+                    const SizedBox(height: 8),
+                    Text("Status: $status"),
+                    Text("Posted: $dateString"),
+                    const SizedBox(height: 10),
+                    if (isPending)
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () => _acceptJob(requestId, jobId),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            child: const Text("Accept", style: TextStyle(color: Colors.white)),
                           ),
-                          child: const Text(
-                            "Accept",
-                            style: TextStyle(color: Colors.white),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () => _declineJob(requestId, jobId),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text("Decline", style: TextStyle(color: Colors.white)),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: () => _updateJobStatus(jobId, 'cancelled'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          child: const Text(
-                            "Decline",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (status == 'accepted' || status == 'Accepted')
-                    ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          // Update the job status
-                          await _updateJobStatus(jobId, 'Active');
-
-                          // Extract the workerId from the job request
-                          final workerId = job['workerId'] ?? FirebaseAuth.instance.currentUser!.uid;
-
-                          // Update the employee in the jobs collection
-                          await FirebaseFirestore.instance
-                              .collection('jobs')
-                              .doc(jobId)
-                              .update({'employee': workerId});
-
-                          print('Job marked active and employee set to $workerId');
-                        } catch (e) {
-                          print('Failed to update employee ID: $e');
-                        }
-                      },
-                      child: const Text("Mark as Active"),
-                    ),
-
-
-                ],
+                        ],
+                      ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 }
-// Custom Rating Bar Widget (same as before)(rename custom rating and use it propely it already exiat)
+
 class cCustomRatingBar extends StatelessWidget {
   final double rating;
   final double itemSize;
