@@ -1,16 +1,47 @@
-# widget_test
+# 🚀 HustleHub  
 
-A new Flutter project.
+HustleHub is a platform designed to connect **clients** with **skilled workers** for short-term and long-term jobs.  
+It was built as part of the **Adapt IT Hackathon 2025** to empower local communities by bridging the gap between opportunities and talent.  
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 👥 Team Information  
 
-A few resources to get you started if this is your first Flutter project:
+**Team Name:** [WMans]  
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+**Team Members:
+- Mahlatse Clayton Maredi  
+- [Kgothatso Nkadimeng]  
+- [Junior Sebetola]  
+- [Reabetswe Monaiwa]  
+  
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🎯 Project Overview  
+
+HustleHub simplifies the process of finding work and hiring talent:  
+- **For Clients** → Post jobs, view applicants, hire workers.  
+- **For Workers** → Browse jobs, apply with skills, manage job requests.  
+- **For Both** → Secure communication and transparent updates.  
+
+Our goal is to **create opportunities, reduce unemployment, and empower hustlers to showcase their skills**.  
+
+---
+
+## 🔑 Features  
+
+- ✅ Job posting and management  
+- ✅ Worker skill matching  
+- ✅ Real-time status updates  
+- ✅ Profile and portfolio management  
+- ✅ Secure messaging between clients and workers  
+
+---
+
+## 🛠️ Tech Stack  
+
+- **Frontend:** Flutter (Dart)  
+- **Backend:** Firebase (Auth, Firestore, Storage)  
+- **Other Tools:** GitHub, Adapt IT Hackathon resources  
+
+---
