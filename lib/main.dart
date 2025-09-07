@@ -274,15 +274,15 @@ class SignUpPage extends StatefulWidget {
   @override
   State<SignUpPage> createState() => _SignUpPageState();
 }
+
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-  TextEditingController();
-  final TextEditingController _otherSkillController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   File? _profileImage;
   final picker = ImagePicker();
@@ -310,12 +310,14 @@ class _SignUpPageState extends State<SignUpPage> {
 
   final Set<String> _selectedSkills = {};
   bool _showOtherSkillField = false;
+  final TextEditingController _otherSkillController = TextEditingController();
 
   Future<void> registerUser({
     required String uid,
     required String email,
     required String fullName,
     required String password,
+    required String phone,
     required String surName,
     required String role,
     required List<String> skills,
@@ -323,7 +325,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required String location,
     required String experienceLevel,
   }) async {
-    // Create user document
+    // Create user document with all fields (optional ones set to null)
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'uid': uid,
       'email': email,
@@ -331,10 +333,16 @@ class _SignUpPageState extends State<SignUpPage> {
       'password': password,
       'surName': surName,
       'role': role,
+      'phone': phone,
       'skills': skills,
       'profileImageUrl': profileImageUrl,
       'location': location,
       'experienceLevel': experienceLevel,
+      'bio': null,
+      'linkedIn': null,
+      'github': null,
+      'portfolio': null,
+      'otherSocial': null,
       'isVerified': false,
       'createdAt': Timestamp.now(),
     });
@@ -349,9 +357,28 @@ class _SignUpPageState extends State<SignUpPage> {
         'profileImageUrl': profileImageUrl,
         'location': location,
         'experienceLevel': experienceLevel,
+        'bio': null,
+        'linkedIn': null,
+        'github': null,
+        'portfolio': null,
+        'otherSocial': null,
         'rating': 0,
         'totalJobs': 0,
         'isAvailable': true,
+        'createdAt': Timestamp.now(),
+      });
+
+      // Also create a worker_description document
+      await FirebaseFirestore.instance.collection('worker_description').doc(uid).set({
+        'userId': uid,
+        'bio': null,
+        'linkedIn': null,
+        'github': null,
+        'portfolio': null,
+        'otherSocial': null,
+        'skills': skills,
+        'location': location,
+        'experienceLevel': experienceLevel,
         'createdAt': Timestamp.now(),
       });
     }
@@ -437,6 +464,16 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    if (_phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Please enter your phone number"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     if (_selectedRole == "Service Provider" &&
         _selectedSkills.isEmpty &&
         !(_showOtherSkillField && _otherSkillController.text.isNotEmpty)) {
@@ -468,6 +505,7 @@ class _SignUpPageState extends State<SignUpPage> {
         email: _emailController.text.trim(),
         fullName: _nameController.text.trim(),
         password: _passwordController.text.trim(),
+        phone: _phoneController.text.trim(),
         surName: _surnameController.text.trim(),
         role: _selectedRole,
         skills: finalSkills,
@@ -563,6 +601,7 @@ class _SignUpPageState extends State<SignUpPage> {
               style: TextStyle(fontSize: 14, color: Color(0xFF1976D2)),
             ),
             const SizedBox(height: 20),
+
             // Profile Picture
             Stack(
               children: [
@@ -614,6 +653,7 @@ class _SignUpPageState extends State<SignUpPage> {
               ],
             ),
             const SizedBox(height: 20),
+
             // Form Container
             Container(
               padding: const EdgeInsets.all(20),
@@ -645,22 +685,31 @@ class _SignUpPageState extends State<SignUpPage> {
                     ],
                   ),
                   const SizedBox(height: 15),
+
                   _buildTextField(_emailController, "Email", Icons.email,
                       TextInputType.emailAddress),
                   const SizedBox(height: 15),
+
+                  _buildTextField(_phoneController, "Phone Number", Icons.phone,
+                      TextInputType.phone),
+                  const SizedBox(height: 15),
+
                   _buildTextField(
                       _locationController, "Location", Icons.location_on),
                   const SizedBox(height: 15),
+
                   _buildPasswordField(_passwordController, "Password",
                       _obscurePassword, () {
                         setState(() => _obscurePassword = !_obscurePassword);
                       }),
                   const SizedBox(height: 15),
+
                   _buildPasswordField(_confirmPasswordController,
                       "Confirm Password", _obscureConfirm, () {
                         setState(() => _obscureConfirm = !_obscureConfirm);
                       }),
                   const SizedBox(height: 8),
+
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -670,6 +719,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
+
                   // Role
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -682,6 +732,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -715,6 +766,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
                   // Experience Level (only for Service Providers)
                   if (_selectedRole == "Service Provider") ...[
                     const Align(
@@ -750,18 +802,38 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                     const SizedBox(height: 20),
                   ],
+
                   // Skills
                   _buildSkillsSelection(),
                   const SizedBox(height: 20),
+
                   // Sign Up Button
                   _buildSignUpButton(),
                   const SizedBox(height: 10),
+
                   // Login Link
                   _buildLoginLink(),
                 ],
               ),
             ),
             const SizedBox(height: 20),
+
+            // Note about additional profile fields
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                "You can add more details like bio, portfolio links, and social media profiles in your profile settings after signing up.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF1976D2),
+                  fontSize: 14,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -864,10 +936,11 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label,
-      IconData icon, [TextInputType inputType = TextInputType.text]) {
+      IconData icon, [TextInputType inputType = TextInputType.text, int maxLines = 1]) {
     return TextField(
       controller: controller,
       keyboardType: inputType,
+      maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
@@ -889,7 +962,7 @@ class _SignUpPageState extends State<SignUpPage> {
       obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: const Icon(Icons.lock, color: Color(0xFF1976D2)),
+        prefixIcon: const Icon(Icons.lock, color: const Color(0xFF1976D2)),
         suffixIcon: IconButton(
           icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off,
               color: const Color(0xFF1976D2)),
@@ -1335,7 +1408,6 @@ class ClientDashboard extends StatefulWidget {
   @override
   State<ClientDashboard> createState() => _ClientDashboardState();
 }
-
 class _ClientDashboardState extends State<ClientDashboard> {
   int _currentIndex = 0;
   double _userRating = 0.0;
@@ -1395,11 +1467,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
 
     try {
       // Get all jobs where current user is the client
-      // Try different possible field names for client identification
       final List<String> possibleClientFields = ['client', 'clientId', 'userId', 'postedBy', 'clientID'];
 
       QuerySnapshot? querySnapshot;
-      String usedField = '';
 
       for (final field in possibleClientFields) {
         try {
@@ -1408,17 +1478,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
               .where(field, isEqualTo: _currentUser!.uid)
               .get();
 
-          if (querySnapshot.docs.isNotEmpty) {
-            usedField = field;
-            break;
-          }
+          if (querySnapshot.docs.isNotEmpty) break;
         } catch (e) {
-          print("Tried field $field but failed: $e");
           continue;
         }
       }
 
-      // If no jobs found with any field, try without filtering by client
       if (querySnapshot == null || querySnapshot.docs.isEmpty) {
         querySnapshot = await _firestore.collection('jobs').get();
       }
@@ -1431,7 +1496,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
       for (final doc in querySnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
 
-        // Check if this job belongs to the current user
         final isUserJob = _isUserJob(data);
         if (!isUserJob) continue;
 
@@ -1439,8 +1503,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
 
         if (status == 'Completed') {
           completed++;
-
-          // Check if job has a rating - try different field names
           final rating = _getRatingFromData(data);
           if (rating > 0) {
             totalRating += rating;
@@ -1451,7 +1513,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
         }
       }
 
-      // Calculate average rating
       double averageRating = ratedJobs > 0 ? totalRating / ratedJobs : 0.0;
 
       setState(() {
@@ -1461,7 +1522,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
       });
 
       print("Found $completed completed jobs and $pending pending jobs with average rating: $averageRating");
-
     } catch (e) {
       print("Error fetching jobs data: $e");
       setState(() {
@@ -1473,35 +1533,43 @@ class _ClientDashboardState extends State<ClientDashboard> {
   }
 
   bool _isUserJob(Map<String, dynamic> data) {
-    // Check if this job belongs to the current user using various field names
     final possibleClientFields = ['client', 'clientId', 'userId', 'postedBy', 'clientID'];
-
     for (final field in possibleClientFields) {
       if (data.containsKey(field) && data[field] == _currentUser?.uid) {
         return true;
       }
     }
-
-    // If no client field found, assume it's the user's job
-    return true;
+    return true; // fallback
   }
 
   double _getRatingFromData(Map<String, dynamic> data) {
-    // Try different possible field names for rating
     final possibleRatingFields = ['rating', 'clientRating', 'userRating', 'reviewScore'];
-
     for (final field in possibleRatingFields) {
       if (data.containsKey(field)) {
         final rating = data[field];
-        if (rating is num) {
-          return rating.toDouble();
-        } else if (rating is String) {
-          return double.tryParse(rating) ?? 0.0;
-        }
+        if (rating is num) return rating.toDouble();
+        if (rating is String) return double.tryParse(rating) ?? 0.0;
       }
     }
-
     return 0.0;
+  }
+
+  Future<int> _loadResponseCount() async {
+    final workerId = _currentUser?.uid;
+    if (workerId == null) return 0;
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('response')
+          .where('workerId', isEqualTo: workerId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      return querySnapshot.size;
+    } catch (e) {
+      print("Error fetching worker responses: $e");
+      return 0;
+    }
   }
 
   @override
@@ -1510,17 +1578,42 @@ class _ClientDashboardState extends State<ClientDashboard> {
       appBar: AppBar(
         title: const Text(
           'HustleHub Dashboard',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1976D2),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
-            onPressed: () {},
+          FutureBuilder<int>(
+            future: _loadResponseCount(),
+            builder: (context, snapshot) {
+              int responseCount = snapshot.data ?? 0;
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Icon(Icons.notifications, color: Colors.grey);
+              }
+              if (snapshot.hasError) {
+                return const Icon(Icons.error, color: Colors.red);
+              }
+
+              return Badge(
+                largeSize: 37,
+                textColor: responseCount == 0 ? Colors.transparent : Colors.red,
+                child: IconButton(
+                  icon: const Icon(Icons.notifications, color: Colors.white),
+                  onPressed: () {
+                    final workerId = _currentUser?.uid;
+                    if (workerId != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ServiceProviderNotificationScreen(workerId: workerId,),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -1531,15 +1624,10 @@ class _ClientDashboardState extends State<ClientDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome section
             _buildWelcomeSection(),
             const SizedBox(height: 20),
-
-            // Rating and progress section
             _buildRatingSection(),
             const SizedBox(height: 20),
-
-            // Quick stats
             _buildStatsSection(),
             const SizedBox(height: 20),
           ],
@@ -1556,11 +1644,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
         color: const Color(0xFF1976D2),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+          BoxShadow(color: Colors.blue.shade200, blurRadius: 10, offset: const Offset(0, 5)),
         ],
       ),
       child: Row(
@@ -1568,11 +1652,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
           const CircleAvatar(
             radius: 30,
             backgroundColor: Colors.white,
-            child: Icon(
-              Icons.person,
-              size: 30,
-              color: Color(0xFF1976D2),
-            ),
+            child: Icon(Icons.person, size: 30, color: Color(0xFF1976D2)),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -1581,19 +1661,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
               children: [
                 Text(
                   "Welcome back, $_username!",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   'Ready to find your next service provider?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
                 ),
               ],
             ),
@@ -1609,60 +1682,34 @@ class _ClientDashboardState extends State<ClientDashboard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 10, offset: const Offset(0, 5))],
         border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Your Client Rating',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1976D2),
-            ),
-          ),
+          const Text('Your Client Rating',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
           const SizedBox(height: 10),
           Row(
             children: [
-              // Rating display
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CustomRatingBar(
                     rating: _userRating,
                     itemSize: 30,
-                    onRatingChanged: (rating) {
-                      // Rating would typically be updated by service providers
-                    },
+                    onRatingChanged: (rating) {},
                     ignoreGestures: true,
                   ),
                   const SizedBox(height: 5),
-                  Text(
-                    '$_userRating/5.0',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Based on $_completedJobs completed jobs',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
+                  Text('$_userRating/5.0',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Based on $_completedJobs completed jobs',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
               const Spacer(),
-              // Progress indicator
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -1676,13 +1723,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
                     ),
                   ),
-                  Text(
-                    '${((_userRating / 5) * 100).round()}%',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1976D2),
-                    ),
-                  ),
+                  Text('${((_userRating / 5) * 100).round()}%',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
                 ],
               ),
             ],
@@ -1700,10 +1742,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
             _userRating > 0
                 ? 'Keep getting rated to improve your ranking!'
                 : 'Complete jobs to get ratings from service providers!',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
       ),
@@ -1714,30 +1753,15 @@ class _ClientDashboardState extends State<ClientDashboard> {
     return Row(
       children: [
         Expanded(
-          child: _StatCard(
-            title: 'Completed Jobs',
-            value: _completedJobs.toString(),
-            icon: Icons.check_circle,
-            color: Colors.green,
-          ),
+          child: _StatCard(title: 'Completed Jobs', value: _completedJobs.toString(), icon: Icons.check_circle, color: Colors.green),
         ),
         const SizedBox(width: 15),
         Expanded(
-          child: _StatCard(
-            title: 'Pending Jobs',
-            value: _pendingJobs.toString(),
-            icon: Icons.access_time,
-            color: Colors.orange,
-          ),
+          child: _StatCard(title: 'Pending Jobs', value: _pendingJobs.toString(), icon: Icons.access_time, color: Colors.orange),
         ),
         const SizedBox(width: 15),
         Expanded(
-          child: _StatCard(
-            title: 'Total Jobs',
-            value: (_completedJobs + _pendingJobs).toString(),
-            icon: Icons.work,
-            color: const Color(0xFF1976D2),
-          ),
+          child: _StatCard(title: 'Total Jobs', value: (_completedJobs + _pendingJobs).toString(), icon: Icons.work, color: const Color(0xFF1976D2)),
         ),
       ],
     );
@@ -1752,49 +1776,27 @@ class _ClientDashboardState extends State<ClientDashboard> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
-            icon: Icon(
-              Icons.home,
-              color: _currentIndex == 0 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
-            onPressed: () {
-              setState(() {
-                _currentIndex = 0;
-              });
-            },
+            icon: Icon(Icons.home, color: _currentIndex == 0 ? const Color(0xFF1976D2) : Colors.grey),
+            onPressed: () => setState(() => _currentIndex = 0),
           ),
           IconButton(
-            icon: Icon(
-              Icons.work,
-              color: _currentIndex == 1 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
+            icon: Icon(Icons.work, color: _currentIndex == 1 ? const Color(0xFF1976D2) : Colors.grey),
             onPressed: () {
-              setState(() {
-                _currentIndex = 1;
-              });
+              setState(() => _currentIndex = 1);
               Navigator.push(context, MaterialPageRoute(builder: (_) => JobsPage()));
             },
           ),
           IconButton(
-            icon: Icon(
-              Icons.task,
-              color: _currentIndex == 2 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
+            icon: Icon(Icons.task, color: _currentIndex == 2 ? const Color(0xFF1976D2) : Colors.grey),
             onPressed: () {
-              setState(() {
-                _currentIndex = 2;
-              });
+              setState(() => _currentIndex = 2);
               Navigator.push(context, MaterialPageRoute(builder: (_) => TasksPage()));
             },
           ),
           IconButton(
-            icon: Icon(
-              Icons.person,
-              color: _currentIndex == 3 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
+            icon: Icon(Icons.person, color: _currentIndex == 3 ? const Color(0xFF1976D2) : Colors.grey),
             onPressed: () {
-              setState(() {
-                _currentIndex = 3;
-              });
+              setState(() => _currentIndex = 3);
               Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage()));
             },
           ),
@@ -1803,6 +1805,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
     );
   }
 }
+
 
 class _StatCard extends StatelessWidget {
   final String title;
@@ -1927,6 +1930,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _linkedInController = TextEditingController();
   final TextEditingController _githubController = TextEditingController();
   final TextEditingController _otherSocialController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
@@ -1937,6 +1941,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _name = "";
   String _surname = "";
   String _location = "";
+  String _email = "";
   Set<String> _selectedSkills = {};
 
   int _completedJobs = 0;
@@ -1960,18 +1965,18 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       // --- Fetch from users table ---
-      final userDoc =
-      await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final userData = userDoc.data() ?? {};
 
       _name = userData['name'] ?? "";
       _surname = userData['surname'] ?? "";
       _location = userData['location'] ?? "";
+      _email = userData['email'] ?? "";
+      _phoneController.text = userData['phone'] ?? "";
       _selectedSkills = Set<String>.from(userData['skills'] ?? []);
 
       // --- Fetch worker_description (or create if missing) ---
-      final descRef =
-      FirebaseFirestore.instance.collection('worker_description').doc(uid);
+      final descRef = FirebaseFirestore.instance.collection('worker_description').doc(uid);
       final descDoc = await descRef.get();
 
       if (!descDoc.exists) {
@@ -2060,9 +2065,10 @@ class _ProfilePageState extends State<ProfilePage> {
         'location': _location,
       });
 
-      // Update skills in users as well
+      // Update skills and phone in users as well
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'skills': _selectedSkills.toList(),
+        'phone': _phoneController.text,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2074,6 +2080,12 @@ class _ProfilePageState extends State<ProfilePage> {
       _toggleEdit();
     } catch (e) {
       debugPrint("Error saving profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Error updating profile: $e"),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
     }
   }
 
@@ -2096,154 +2108,404 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (pickedFile != null) {
       setState(() => _profileImage = File(pickedFile.path));
+      // Here you would typically upload the image to Firebase Storage
+      // and update the user's profile image URL in Firestore
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+              ),
+              SizedBox(height: 16),
+              Text(
+                "Loading your profile...",
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("My Profile"),
+        title: const Text("My Profile", style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1976D2),
+        elevation: 0,
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit),
+            icon: Icon(_isEditing ? Icons.save : Icons.edit, color: Colors.white),
             onPressed: _isEditing ? _saveProfile : _toggleEdit,
-            color: Colors.white,
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: _profileImage != null
-                      ? FileImage(_profileImage!)
-                      : null,
-                  child: _profileImage == null
-                      ? const Icon(Icons.person, size: 60, color: Color(0xFF1976D2))
-                      : null,
-                ),
-                if (_isEditing)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: _pickImage,
-                      child: const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Color(0xFF1976D2),
-                        child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+            // Profile Header Section
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: _profileImage != null
+                            ? FileImage(_profileImage!)
+                            : null,
+                        child: _profileImage == null
+                            ? Icon(Icons.person, size: 50, color: Color(0xFF1976D2))
+                            : null,
                       ),
+                      if (_isEditing)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF1976D2),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    "$_name $_surname",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "$_name $_surname",
-              style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
-            ),
-            Text(_location, style: const TextStyle(color: Colors.grey)),
-
-            const SizedBox(height: 24),
-
-            // Bio
-            TextField(
-              controller: _bioController,
-              enabled: _isEditing,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: "Bio",
-                border: OutlineInputBorder(),
+                  SizedBox(height: 4),
+                  Text(
+                    _location,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    _email,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
 
-            // Social links
-            TextField(
-              controller: _linkedInController,
-              enabled: _isEditing,
-              decoration: const InputDecoration(labelText: "LinkedIn"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _githubController,
-              enabled: _isEditing,
-              decoration: const InputDecoration(labelText: "GitHub"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _otherSocialController,
-              enabled: _isEditing,
-              decoration: const InputDecoration(labelText: "Other Social Media"),
-            ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
-            // Skills
-            const Text("Skills",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _skillsList.map((skill) {
-                final selected = _selectedSkills.contains(skill);
-                return FilterChip(
-                  label: Text(skill),
-                  selected: selected,
-                  onSelected: _isEditing ? (_) => _toggleSkill(skill) : null,
-                  selectedColor: const Color(0xFF1976D2),
-                  checkmarkColor: Colors.white,
-                );
-              }).toList(),
+            // Stats Cards
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatCard("Jobs Completed", "$_completedJobs", Icons.work, Color(0xFF1976D2)),
+                  _buildStatCard("Rating", _rating.toStringAsFixed(1), Icons.star, Colors.amber),
+                  _buildStatCard("Satisfaction", "${_satisfaction.toStringAsFixed(0)}%", Icons.emoji_emotions, Colors.green),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
 
-            // Stats
-            const Text("Service Stats",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatColumn("$_completedJobs", "Jobs Completed"),
-                _buildStatColumn(_rating.toStringAsFixed(1), "Rating"),
-                _buildStatColumn("${_satisfaction.toStringAsFixed(0)}%", "Satisfaction"),
-              ],
+            SizedBox(height: 20),
+
+            // Personal Information Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Personal Information",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    enabled: _isEditing,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: "Phone Number",
+                      prefixIcon: Icon(Icons.phone, color: Color(0xFF1976D2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: !_isEditing,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _bioController,
+                    enabled: _isEditing,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: "Bio",
+                      alignLabelWithHint: true,
+                      prefixIcon: Icon(Icons.info, color: Color(0xFF1976D2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: !_isEditing,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            SizedBox(height: 20),
+
+            // Skills Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Skills",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _skillsList.map((skill) {
+                      final selected = _selectedSkills.contains(skill);
+                      return ChoiceChip(
+                        label: Text(skill),
+                        selected: selected,
+                        onSelected: _isEditing ? (_) => _toggleSkill(skill) : null,
+                        selectedColor: Color(0xFF1976D2),
+                        backgroundColor: Colors.grey[200],
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : Colors.black87,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 20),
+
+            // Social Media Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Social Media",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _linkedInController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "LinkedIn",
+                      prefixIcon: Icon(Icons.link, color: Color(0xFF1976D2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: !_isEditing,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  TextFormField(
+                    controller: _githubController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "GitHub",
+                      prefixIcon: Icon(Icons.code, color: Color(0xFF1976D2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: !_isEditing,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  TextFormField(
+                    controller: _otherSocialController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "Other Social Media",
+                      prefixIcon: Icon(Icons.public, color: Color(0xFF1976D2)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: !_isEditing,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 30),
+
+            // Action Button
+            if (_isEditing)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ElevatedButton(
+                  onPressed: _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF1976D2),
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                  ),
+                  child: Text(
+                    "Save Changes",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+
+            SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatColumn(String value, String label) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Text(value,
-            style: const TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.black54)),
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }
 }
-
 
 class JobsPage extends StatefulWidget {
   const JobsPage({super.key});
@@ -2269,6 +2531,7 @@ class _JobsPageState extends State<JobsPage> {
     try {
       final querySnapshot = await _firestore
           .collection('jobs')
+          .where('status',isEqualTo:'Inactive')
           .orderBy('postedAt', descending: true)
           .get();
 
@@ -2766,7 +3029,7 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
                           ),
                         ),
                         Text(
-                          '\$${widget.job.budget.toStringAsFixed(2)}',
+                          '\R${widget.job.budget.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -2810,7 +3073,7 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                prefixText: '\$ ',
+                prefixText: '\R ',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -2906,6 +3169,7 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
                 onPressed: () {
                   if (_proposedPrice > 0) {
                     widget.onApply(_proposedPrice);
+
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -2923,7 +3187,7 @@ class _JobDetailsBottomSheetState extends State<JobDetailsBottomSheet> {
                   ),
                 ),
                 child: Text(
-                  "Apply for \$${_proposedPrice.toStringAsFixed(2)}",
+                  "Apply for \R${_proposedPrice.toStringAsFixed(2)}",
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -2989,13 +3253,13 @@ class _TasksPageState extends State<TasksPage> {
   Future<void> _fetchTasks() async {
     try {
       // For testing, use employee ID "1" - replace with _currentUser!.uid in production
-      final employeeId = _currentUser?.uid ?? "1";
-      final iid = 1; // Use "1" for testing
+      final employeeId = _currentUser?.uid ;
+
 
       QuerySnapshot querySnapshot = await _firestore
           .collection('jobs')
-          .where('employee', isEqualTo: iid)
-          .where('status', whereIn: ['Active', 'Inactive', 'In Progress', 'Completed'])
+          .where('employee', isEqualTo: employeeId)
+          .where('status', whereIn: ['Active', 'In Progress', 'Completed'])
           .get();
 
       setState(() {
@@ -3692,16 +3956,20 @@ class ServiceDashboard extends StatefulWidget {
 
 class _ServiceDashboardState extends State<ServiceDashboard> {
   int _currentIndex = 0;
-  double _serviceRating = 0.0; // Will be fetched from Firestore
+  double _serviceRating = 0.0;
   int _activeJobsCount = 0;
   int _completedJobsCount = 0;
-  String _jobFilter = 'active'; // 'active', 'inactive', or 'all'
+  String _jobFilter = 'active';
+  int _totalNotificationCount = 0;
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
     _loadJobCounts();
     _loadServiceRating();
+    _fetchNotificationCount();
   }
 
   Future<void> _loadServiceRating() async {
@@ -3709,13 +3977,9 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
     if (userId == null) return;
 
     try {
-      final ratingDoc = await FirebaseFirestore.instance
-          .collection('ratings')
-          .doc(userId)
-          .get();
-
+      final ratingDoc = await _firestore.collection('ratings').doc(userId).get();
       if (ratingDoc.exists) {
-        final data = ratingDoc.data() as Map<String, dynamic>;
+        final data = ratingDoc.data()!;
         setState(() {
           _serviceRating = (data['averageRating'] ?? 0.0).toDouble();
         });
@@ -3729,43 +3993,62 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    // Get active jobs count (only those with employee = 1)
-    final activeQuery = await FirebaseFirestore.instance
-        .collection('jobs')
-        .where('postedBy', isEqualTo: userId)
-        .where('status', isEqualTo: 'Active')
-        .where('employee', isEqualTo: 1) // Only jobs with employee = 1
-        .get();
+    try {
+      final activeQuery = await _firestore
+          .collection('jobs')
+          .where('postedBy', isEqualTo: userId)
+          .where('status', isEqualTo: 'Active')
+          .where('employee', isEqualTo: 1)
+          .get();
 
-    setState(() {
-      _activeJobsCount = activeQuery.size;
-    });
+      final completedQuery = await _firestore
+          .collection('jobs')
+          .where('postedBy', isEqualTo: userId)
+          .where('status', isEqualTo: 'Completed')
+          .where('employee', isEqualTo: 1)
+          .get();
 
-    // Get completed jobs count (only those with employee = 1)
-    final completedQuery = await FirebaseFirestore.instance
-        .collection('jobs')
-        .where('postedBy', isEqualTo: userId)
-        .where('status', isEqualTo: 'Completed')
-        .where('employee', isEqualTo: 1) // Only jobs with employee = 1
-        .get();
+      setState(() {
+        _activeJobsCount = activeQuery.size;
+        _completedJobsCount = completedQuery.size;
+      });
+    } catch (e) {
+      print('Error loading job counts: $e');
+    }
+  }
 
-    setState(() {
-      _completedJobsCount = completedQuery.size;
-    });
+  Future<void> _fetchNotificationCount() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      final querySnapshot = await _firestore
+          .collection('response')
+          .where('currentUserId', isEqualTo: userId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      setState(() {
+        _totalNotificationCount = querySnapshot.size;
+      });
+    } catch (e) {
+      print('Error fetching notification count: $e');
+    }
   }
 
   Future<String> getUsername() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return "User";
-    final dat = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    var doc = dat.data() as Map<String, dynamic>?;
-    if (doc == null) return "User";
-    final String name = doc['fullName'] ?? "User";
-    return name;
+
+    final doc = await _firestore.collection('users').doc(userId).get();
+    final data = doc.data();
+    return data?['fullName'] ?? "User";
   }
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -3781,15 +4064,49 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => WorkerSearchPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerSearchPage()));
             },
           ),
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
-            onPressed: () {},
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications, color: Colors.white),
+                if (_totalNotificationCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_totalNotificationCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () {
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ClientNotificationsScreen(clientId: userId),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -3798,33 +4115,20 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome section
             _buildWelcomeSection(),
             const SizedBox(height: 20),
-
-            // Rating and progress section
             _buildRatingSection(),
             const SizedBox(height: 20),
-
-            // Quick stats
             _buildStatsSection(),
             const SizedBox(height: 20),
-
-            // Jobs section with filter
             _buildJobsSection(),
-            const SizedBox(height: 20),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => AddJobPage()),
-          ).then((_) {
-            // Refresh counts when returning from AddJobPage
-            _loadJobCounts();
-          });
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AddJobPage()))
+              .then((_) => _loadJobCounts());
         },
         backgroundColor: const Color(0xFF1976D2),
         child: const Icon(Icons.add, color: Colors.white),
@@ -3860,51 +4164,32 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
           ),
           const SizedBox(width: 15),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FutureBuilder<String>(
-                  future: getUsername(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text(
-                        "Loading...",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    } else if (snapshot.hasError) {
-                      return const Text(
-                        "Error loading name",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    } else {
-                      return Text(
-                        "Welcome back, ${snapshot.data}!",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    }
-                  },
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Ready to post your next service job?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-              ],
+            child: FutureBuilder<String>(
+              future: getUsername(),
+              builder: (context, snapshot) {
+                final name = snapshot.data ?? "User";
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome back, $name!",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Ready to post your next service job?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -3932,40 +4217,25 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         children: [
           const Text(
             'Your Service Rating',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Text(
                 _serviceRating.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber,
-                ),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.amber),
               ),
               const SizedBox(width: 10),
               const Icon(Icons.star, color: Colors.amber, size: 24),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {
-                  // Navigate to ratings page or show ratings dialog
-                  _showRatingDetails(context);
-                },
+                onPressed: () => _showRatingDetails(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
-                child: const Text(
-                  'View Details',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child: const Text('View Details', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -3978,13 +4248,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
             borderRadius: BorderRadius.circular(4),
           ),
           const SizedBox(height: 5),
-          const Text(
-            'Based on customer reviews',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
+          const Text('Based on customer reviews', style: TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
     );
@@ -3993,27 +4257,16 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
   void _showRatingDetails(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
           title: const Text('Your Rating Details'),
           content: FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('ratings')
-                .doc(FirebaseAuth.instance.currentUser?.uid)
-                .get(),
+            future: _firestore.collection('ratings').doc(FirebaseAuth.instance.currentUser?.uid).get(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (!snapshot.hasData || !snapshot.data!.exists) {
-                return const Text('No ratings yet.');
-              }
-
-              final ratingData = snapshot.data!.data() as Map<String, dynamic>;
-              final totalRatings = ratingData['totalRatings'] ?? 0;
-              final averageRating = ratingData['averageRating'] ?? 0.0;
-
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+              final totalRatings = data['totalRatings'] ?? 0;
+              final averageRating = data['averageRating'] ?? 0.0;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4030,12 +4283,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
             },
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Close'),
-            ),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
           ],
         );
       },
@@ -4045,32 +4293,11 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
   Widget _buildStatsSection() {
     return Row(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            title: 'Active Jobs',
-            value: _activeJobsCount.toString(),
-            icon: Icons.work,
-            color: Colors.blue,
-          ),
-        ),
+        Expanded(child: _buildStatCard(title: 'Active Jobs', value: _activeJobsCount.toString(), icon: Icons.work, color: Colors.blue)),
         const SizedBox(width: 15),
-        Expanded(
-          child: _buildStatCard(
-            title: 'Completed Jobs',
-            value: _completedJobsCount.toString(),
-            icon: Icons.check_circle,
-            color: Colors.green,
-          ),
-        ),
+        Expanded(child: _buildStatCard(title: 'Completed Jobs', value: _completedJobsCount.toString(), icon: Icons.check_circle, color: Colors.green)),
         const SizedBox(width: 15),
-        Expanded(
-          child: _buildStatCard(
-            title: 'Total Jobs',
-            value: (_activeJobsCount + _completedJobsCount).toString(),
-            icon: Icons.list_alt,
-            color: Colors.purple,
-          ),
-        ),
+        Expanded(child: _buildStatCard(title: 'Total Jobs', value: (_activeJobsCount + _completedJobsCount).toString(), icon: Icons.list_alt, color: Colors.purple)),
       ],
     );
   }
@@ -4081,166 +4308,64 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 10, offset: const Offset(0, 5))],
         border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
         children: [
           Icon(icon, size: 30, color: color),
           const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 5),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
+          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
     );
   }
 
   Widget _buildJobsSection() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your Jobs',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1976D2),
-          ),
-        ),
+        const Text('Your Jobs', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
         const SizedBox(height: 10),
-
-        // Filter chips
         Row(
           children: [
-            FilterChip(
-              label: const Text('Active'),
-              selected: _jobFilter == 'active',
-              onSelected: (selected) {
-                setState(() {
-                  _jobFilter = selected ? 'active' : 'all';
-                });
-              },
-              selectedColor: Colors.blue.shade100,
-              checkmarkColor: Colors.blue,
-            ),
+            FilterChip(label: const Text('Active'), selected: _jobFilter == 'active', onSelected: (selected) => setState(() => _jobFilter = selected ? 'active' : 'all')),
             const SizedBox(width: 10),
-            FilterChip(
-              label: const Text('Inactive'),
-              selected: _jobFilter == 'inactive',
-              onSelected: (selected) {
-                setState(() {
-                  _jobFilter = selected ? 'inactive' : 'all';
-                });
-              },
-              selectedColor: Colors.blue.shade100,
-              checkmarkColor: Colors.blue,
-            ),
+            FilterChip(label: const Text('Inactive'), selected: _jobFilter == 'inactive', onSelected: (selected) => setState(() => _jobFilter = selected ? 'inactive' : 'all')),
             const SizedBox(width: 10),
-            FilterChip(
-              label: const Text('All'),
-              selected: _jobFilter == 'all',
-              onSelected: (selected) {
-                setState(() {
-                  _jobFilter = selected ? 'all' : 'active';
-                });
-              },
-              selectedColor: Colors.blue.shade100,
-              checkmarkColor: Colors.blue,
-            ),
+            FilterChip(label: const Text('All'), selected: _jobFilter == 'all', onSelected: (selected) => setState(() => _jobFilter = selected ? 'all' : 'active')),
           ],
         ),
-
         const SizedBox(height: 15),
         StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('jobs')
-              .where('postedBy', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-              .where('employee', isEqualTo: 1) // Only show jobs with employee = 1
-              .snapshots(),
+          stream: _firestore.collection('jobs').where('postedBy', isEqualTo: userId).where('employee', isEqualTo: 1).snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            }
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
             final docs = snapshot.data!.docs;
-
-            // Filter jobs based on selected filter
             final filteredDocs = docs.where((doc) {
               final job = doc.data()! as Map<String, dynamic>;
-              final status = job['status']?.toString().toLowerCase() ?? '';
-
-              if (_jobFilter == 'active') {
-                return status == 'active';
-              } else if (_jobFilter == 'inactive') {
-                return status != 'active';
-              } else {
-                return true; // Show all jobs
-              }
+              final status = (job['status'] ?? '').toString().toLowerCase();
+              if (_jobFilter == 'active') return status == 'active';
+              if (_jobFilter == 'inactive') return status != 'active';
+              return true;
             }).toList();
 
-            if (filteredDocs.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  'No jobs found with the selected filter.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              );
-            }
+            if (filteredDocs.isEmpty) return const Center(child: Text('No jobs found with the selected filter.'));
 
             return ListView.separated(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: filteredDocs.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final job = filteredDocs[index].data()! as Map<String, dynamic>;
-
-                // Proper date formatting from postedAt field
                 String formattedDate = 'Date not available';
-                if (job['postedAt'] != null) {
-                  if (job['postedAt'] is Timestamp) {
-                    formattedDate = DateFormat.yMMMd().format((job['postedAt'] as Timestamp).toDate());
-                  } else if (job['postedAt'] is DateTime) {
-                    formattedDate = DateFormat.yMMMd().format(job['postedAt'] as DateTime);
-                  } else if (job['postedAt'] is String) {
-                    try {
-                      final dateTime = DateTime.parse(job['postedAt'] as String);
-                      formattedDate = DateFormat.yMMMd().format(dateTime);
-                    } catch (e) {
-                      formattedDate = 'Invalid date';
-                    }
-                  }
-                }
-
+                if (job['postedAt'] is Timestamp) formattedDate = DateFormat.yMMMd().format((job['postedAt'] as Timestamp).toDate());
                 return _JobCard(
                   jobTitle: job['title'] ?? 'No title',
                   jobType: job['type'] ?? 'N/A',
@@ -4258,7 +4383,6 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
     );
   }
 
-  // Helper method to get status color
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'active':
@@ -4286,50 +4410,14 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
-            icon: Icon(
-              Icons.home,
-              color: _currentIndex == 0 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
-            onPressed: () {
-              setState(() {
-                _currentIndex = 0;
-              });
-            },
+            icon: Icon(Icons.home, color: _currentIndex == 0 ? const Color(0xFF1976D2) : Colors.grey),
+            onPressed: () => setState(() => _currentIndex = 0),
           ),
           IconButton(
-            icon: Icon(
-              Icons.work,
-              color: _currentIndex == 1 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
+            icon: Icon(Icons.person, color: _currentIndex == 3 ? const Color(0xFF1976D2) : Colors.grey),
             onPressed: () {
-              setState(() {
-                _currentIndex = 1;
-              });
-              // Navigator.push(context, MaterialPageRoute(builder: (_)=>PostedJobsPage()));
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.track_changes,
-              color: _currentIndex == 2 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
-            onPressed: () {
-              setState(() {
-                _currentIndex = 2;
-              });
-              // Navigator.push(context, MaterialPageRoute(builder: (_)=>JobTrackingPage()));
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.person,
-              color: _currentIndex == 3 ? const Color(0xFF1976D2) : Colors.grey,
-            ),
-            onPressed: () {
-              setState(() {
-                _currentIndex = 3;
-              });
-              // Navigator.push(context, MaterialPageRoute(builder: (_)=>ProfilePage()));
+              setState(() => _currentIndex = 3);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ClientProfilePage()));
             },
           ),
         ],
@@ -4337,6 +4425,7 @@ class _ServiceDashboardState extends State<ServiceDashboard> {
     );
   }
 }
+
 
 
 class _JobCard extends StatelessWidget {
@@ -4540,6 +4629,21 @@ class _WorkerJobsPageState extends State<WorkerJobsPage> {
         itemCount: _jobRequests.length,
         itemBuilder: (context, index) {
           final job = _jobRequests[index];
+          Future<void> updateEmployee(String jobId, int newEmployeeId) async {
+            try {
+              // Reference to the specific job document
+              DocumentReference jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
+
+              // Update the 'employee' field
+              await jobRef.update({
+                'employee': newEmployeeId,
+              });
+
+              print('Employee ID updated successfully!');
+            } catch (e) {
+              print('Failed to update employee ID: $e');
+            }
+          }
 
           // Safely extract data with fallbacks
           final jobId = job['id'] ?? 'N/A';
@@ -4611,9 +4715,29 @@ class _WorkerJobsPageState extends State<WorkerJobsPage> {
                     ),
                   if (status == 'accepted' || status == 'Accepted')
                     ElevatedButton(
-                      onPressed: () => _updateJobStatus(jobId, 'completed'),
-                      child: const Text("Mark as Completed"),
+                      onPressed: () async {
+                        try {
+                          // Update the job status
+                          await _updateJobStatus(jobId, 'Active');
+
+                          // Extract the workerId from the job request
+                          final workerId = job['workerId'] ?? FirebaseAuth.instance.currentUser!.uid;
+
+                          // Update the employee in the jobs collection
+                          await FirebaseFirestore.instance
+                              .collection('jobs')
+                              .doc(jobId)
+                              .update({'employee': workerId});
+
+                          print('Job marked active and employee set to $workerId');
+                        } catch (e) {
+                          print('Failed to update employee ID: $e');
+                        }
+                      },
+                      child: const Text("Mark as Active"),
                     ),
+
+
                 ],
               ),
             ),
@@ -5457,12 +5581,7 @@ class WorkerProfilePage extends StatelessWidget {
 
             // Demo link that's always clickable
             const SizedBox(height: 8),
-            _buildSocialLinkCard(
-              icon: Icons.web,
-              title: 'Sample Portfolio',
-              value: 'https://groww.in/p/portfolio',
-              onTap: () => _launchUrl('https://groww.in/p/portfolio'),
-            ),
+
 
             const SizedBox(height: 32),
           ],
@@ -5728,8 +5847,1881 @@ class _WorkerCard extends StatelessWidget {
     );
   }
 }
-// Update the Worker Card to make name clickable
 
-// Update the Job Card to make "View Details" clickable
+class ClientNotificationsScreen extends StatefulWidget {
+  final String clientId;
 
+  const ClientNotificationsScreen({Key? key, required this.clientId}) : super(key: key);
 
+  @override
+  _ClientNotificationsScreenState createState() => _ClientNotificationsScreenState();
+}
+
+class _ClientNotificationsScreenState extends State<ClientNotificationsScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Job Requests', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF1976D2),
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep, color: Colors.white),
+            onPressed: _showDeleteAllDialog,
+            tooltip: 'Delete All Processed Requests',
+          ),
+        ],
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('requests')
+            .where('clientId', isEqualTo: widget.clientId)
+            .where('status', isEqualTo: 'pending')
+            .orderBy('appliedAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red)),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+              ),
+            );
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No pending requests',
+                      style: TextStyle(fontSize: 18, color: Colors.grey)),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var request = snapshot.data!.docs[index];
+              var data = request.data() as Map<String, dynamic>;
+
+              return _buildRequestCard(request.id, data);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(String requestId, Map<String, dynamic> data) {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    data['jobTitle'] ?? 'No Title',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1976D2),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '\$${data['proposedPrice']?.toString() ?? '0'}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1976D2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(Icons.person, 'Worker: ${data['workerName'] ?? 'Unknown Worker'}'),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.location_on, 'Location: ${data['location'] ?? 'Not specified'}'),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.access_time, 'Applied: ${_formatTimestamp(data['appliedAt'])}'),
+            const SizedBox(height: 12),
+            const Text(
+              'Required Skills:',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: (data['requiredSkills'] as List<dynamic>?)
+                  ?.map((skill) => Chip(
+                label: Text(skill.toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.white)),
+                backgroundColor: const Color(0xFF1976D2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ))
+                  .toList() ??
+                  [],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _showRejectDialog(requestId, data),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Reject'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _acceptRequest(requestId, data),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1976D2),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Accept'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: () => _showDeleteDialog(requestId),
+                child: const Text(
+                  'Delete Request',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: TextStyle(color: Colors.grey[700])),
+        ),
+      ],
+    );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      return DateFormat('MMM dd, yyyy - hh:mm a').format(timestamp.toDate());
+    } else if (timestamp is String) {
+      return timestamp;
+    }
+    return 'Unknown date';
+  }
+
+  void _acceptRequest(String requestId, Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Accept Request', style: TextStyle(color: Color(0xFF1976D2))),
+        content: const Text('Are you sure you want to accept this job request?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              _saveResponseToFirestore(requestId, data, 'accepted');
+              _updateRequestStatus(requestId, 'accepted', null);
+              _showWorkerProfile(data['workerId']);
+              Navigator.pop(context);
+            },
+            child: const Text('Accept', style: TextStyle(color: Color(0xFF1976D2))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRejectDialog(String requestId, Map<String, dynamic> data) {
+    TextEditingController reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Request', style: TextStyle(color: Color(0xFF1976D2))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please provide a reason for rejection:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter reason...',
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (reasonController.text.isNotEmpty) {
+                _saveResponseToFirestore(requestId, data, 'rejected', reason: reasonController.text);
+                _updateRequestStatus(requestId, 'rejected', reasonController.text);
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please provide a reason for rejection'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Submit', style: TextStyle(color: Color(0xFF1976D2))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(String requestId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Request', style: TextStyle(color: Colors.red)),
+        content: const Text('Are you sure you want to delete this request? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteRequest(requestId);
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAllDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete All Processed Requests', style: TextStyle(color: Colors.red)),
+        content: const Text('Are you sure you want to delete all requests that have been accepted or rejected? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteAllProcessedRequests();
+              Navigator.pop(context);
+            },
+            child: const Text('Delete All', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteRequest(String requestId) async {
+    try {
+      await _firestore.collection('requests').doc(requestId).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Request deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting request: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteAllProcessedRequests() async {
+    try {
+      // Get all processed requests (accepted or rejected)
+      final querySnapshot = await _firestore
+          .collection('requests')
+          .where('clientId', isEqualTo: widget.clientId)
+          .where('status', whereIn: ['accepted', 'rejected'])
+          .get();
+
+      // Delete each document
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deleted ${querySnapshot.size} processed requests'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting requests: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _saveResponseToFirestore(String requestId, Map<String, dynamic> data, String status, {String? reason}) async {
+    try {
+      // Get current user data
+      User? user = _auth.currentUser;
+      DocumentSnapshot userSnapshot = await _firestore.collection('users').doc(user?.uid).get();
+      Map<String, dynamic> userData = userSnapshot.data() as Map<String, dynamic>;
+
+      // Create response data
+      Map<String, dynamic> responseData = {
+        'requestId': requestId,
+        'jobId': data['jobId'],
+        'jobTitle': data['jobTitle'],
+        'clientId': data['clientId'],
+        'clientName': userData['fullName'] ?? 'Unknown Client',
+        'workerId': data['workerId'],
+        'workerName': data['workerName'],
+        'status': status,
+        'respondedAt': FieldValue.serverTimestamp(),
+        'proposedPrice': data['proposedPrice'],
+        'location': data['location'],
+      };
+
+      // Add rejection reason if provided
+      if (reason != null && status == 'rejected') {
+        responseData['rejectionReason'] = reason;
+      }
+
+      // Save to responses collection
+      await _firestore.collection('responses').add(responseData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Response $status successfully'),
+          backgroundColor: status == 'accepted' ? const Color(0xFF1976D2) : Colors.red,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving response: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _updateRequestStatus(String requestId, String status, String? reason) {
+    _firestore.collection('requests').doc(requestId).update({
+      'status': status,
+      'respondedAt': FieldValue.serverTimestamp(),
+      if (reason != null) 'rejectionReason': reason,
+    }).catchError((error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating request: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    });
+  }
+
+  void _showWorkerProfile(String workerId) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: FutureBuilder<DocumentSnapshot>(
+          future: _firestore.collection('users').doc(workerId).get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+                  ),
+                ),
+              );
+            }
+
+            if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    const Text('Profile Not Found',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    const Text('Could not load worker profile.'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1976D2),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            var workerData = snapshot.data!.data() as Map<String, dynamic>;
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Worker Profile',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1976D2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildProfileItem('Full Name', '${workerData['fullName'] ?? 'N/A'} ${workerData['surName'] ?? ''}'),
+                    _buildProfileItem('Email', workerData['email'] ?? 'N/A'),
+                    _buildProfileItem('Location', workerData['location'] ?? 'N/A'),
+                    _buildProfileItem('Experience Level', workerData['experienceLevel'] ?? 'N/A'),
+                    _buildProfileItem('Role', workerData['role'] ?? 'N/A'),
+                    if (workerData['skills'] != null && (workerData['skills'] as List).isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          const Text('Skills:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: (workerData['skills'] as List<dynamic>)
+                                .map((skill) => Chip(
+                              label: Text(skill.toString(),
+                                  style: const TextStyle(fontSize: 12, color: Colors.white)),
+                              backgroundColor: const Color(0xFF1976D2),
+                            ))
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1976D2),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class ServiceProviderNotificationScreen extends StatefulWidget {
+  final String workerId;
+
+  const ServiceProviderNotificationScreen({Key? key, required this.workerId}) : super(key: key);
+
+  @override
+  _ServiceProviderNotificationScreenState createState() => _ServiceProviderNotificationScreenState();
+}
+
+class _ServiceProviderNotificationScreenState extends State<ServiceProviderNotificationScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: const Text('Job Responses', style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color(0xFF1976D2),
+          iconTheme: const IconThemeData(color: Colors.white),
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Accepted', icon: Icon(Icons.check_circle)),
+              Tab(text: 'Rejected', icon: Icon(Icons.cancel)),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildResponsesList('accepted'),
+            _buildResponsesList('rejected'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResponsesList(String status) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('responses')
+          .where('workerId', isEqualTo: widget.workerId)
+          .where('status', isEqualTo: status)
+          .orderBy('respondedAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red)),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+            ),
+          );
+        }
+
+        if (snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  status == 'accepted' ? Icons.check_circle_outline : Icons.highlight_off,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No $status responses',
+                  style: const TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var response = snapshot.data!.docs[index];
+            var data = response.data() as Map<String, dynamic>;
+            var documentId = response.id;
+
+            return _buildResponseCard(data, status, documentId);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildResponseCard(Map<String, dynamic> data, String status, String documentId) {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    data['jobTitle'] ?? 'No Title',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1976D2),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: status == 'accepted'
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.red.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: status == 'accepted' ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(Icons.person, 'Client: ${data['clientName'] ?? 'Unknown Client'}'),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.access_time, 'Responded: ${_formatTimestamp(data['respondedAt'])}'),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.attach_money, 'Price: R${data['proposedPrice']?.toString() ?? '0'}'),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.location_on, 'Location: ${data['location'] ?? 'Not specified'}'),
+
+            if (status == 'rejected' && data['rejectionReason'] != null) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Rejection Reason:',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                data['rejectionReason'],
+                style: const TextStyle(fontSize: 14, color: Colors.red),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (status == 'accepted')
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _showClientProfile(data['clientId']),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1976D2),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person, size: 20),
+                          SizedBox(width: 8),
+                          Text('View Client'),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (status == 'accepted') const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _showDeleteConfirmation(documentId, data['jobTitle'] ?? 'this response'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.delete, size: 20),
+                        SizedBox(width: 8),
+                        Text('Delete'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: TextStyle(color: Colors.grey[700])),
+        ),
+      ],
+    );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      return DateFormat('MMM dd, yyyy - hh:mm a').format(timestamp.toDate());
+    } else if (timestamp is String) {
+      return timestamp;
+    }
+    return 'Unknown date';
+  }
+
+  void _showDeleteConfirmation(String documentId, String jobTitle) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Response'),
+          content: Text('Are you sure you want to delete your response for "$jobTitle"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteResponse(documentId);
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteResponse(String documentId) async {
+    try {
+      await _firestore.collection('responses').doc(documentId).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Response deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting response: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showClientProfile(String clientId) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          child: FutureBuilder<DocumentSnapshot>(
+            future: _firestore.collection('users').doc(clientId).get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+                    ),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Profile Not Available',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Could not load client profile information.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1976D2),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        ),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              var clientData = snapshot.data!.data() as Map<String, dynamic>;
+              final fullName = '${clientData['fullName'] ?? ''} ${clientData['surName'] ?? ''}'.trim();
+              final email = clientData['email'] ?? 'Not provided';
+              final phone = clientData['phone'] ?? 'Not provided';
+              final location = clientData['location'] ?? 'Not specified';
+              final experienceLevel = clientData['experienceLevel'] ?? 'Not specified';
+              final role = clientData['role'] ?? 'Not specified';
+
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Section
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF1976D2).withOpacity(0.1),
+                                border: Border.all(color: const Color(0xFF1976D2), width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Color(0xFF1976D2),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              fullName.isNotEmpty ? fullName : 'Unknown Client',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1976D2),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              role,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 16),
+
+                      // Contact Information Section
+                      const Text(
+                        'CONTACT INFORMATION',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildContactItem(
+                        Icons.email,
+                        'Email Address',
+                        email,
+                        onTap: email != 'Not provided' ? () {
+                          _launchEmail(email);
+                        } : null,
+                      ),
+
+                      _buildContactItem(
+                        Icons.phone,
+                        'Phone Number',
+                        phone,
+                        onTap: phone != 'Not provided' ? () {
+                          _makePhoneCall(phone);
+                        } : null,
+                      ),
+
+                      _buildContactItem(
+                        Icons.location_on,
+                        'Location',
+                        location,
+                      ),
+
+                      _buildContactItem(
+                        Icons.work,
+                        'Experience Level',
+                        experienceLevel,
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 16),
+
+                      // Congratulations Message Section
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.celebration, color: Colors.green, size: 24),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Congratulations!',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Your application has been accepted! Contact the client early to discuss job details and schedule the work.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.green[800],
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.left,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Quick communication increases your chances of securing the job!',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.green[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (clientData['skills'] != null && (clientData['skills'] as List).isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Skills & Expertise:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: (clientData['skills'] as List<dynamic>)
+                                  .map((skill) => Chip(
+                                label: Text(
+                                  skill.toString(),
+                                  style: const TextStyle(fontSize: 12, color: Colors.white),
+                                ),
+                                backgroundColor: const Color(0xFF1976D2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ))
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+
+                      const SizedBox(height: 24),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF1976D2),
+                                side: const BorderSide(color: Color(0xFF1976D2)),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Close'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (phone != 'Not provided')
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => _makePhoneCall(phone),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.phone, size: 20),
+                                    SizedBox(width: 4),
+                                    Text('Call'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (email != 'Not provided')
+                        ElevatedButton(
+                          onPressed: () => _launchEmail(email),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1976D2),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.email, size: 20),
+                              SizedBox(width: 8),
+                              Text('Send Email'),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactItem(IconData icon, String title, String value, {VoidCallback? onTap}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 24, color: const Color(0xFF1976D2)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: onTap != null ? const Color(0xFF1976D2) : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Functional contact methods using url_launcher
+  Future<void> _launchEmail(String email) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+    );
+
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not launch email app'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error launching email: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _makePhoneCall(String phone) async {
+    // Clean phone number - remove any non-digit characters
+    final cleanedPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final Uri phoneUri = Uri(
+      scheme: 'tel',
+      path: cleanedPhone,
+    );
+
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not make phone call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error making phone call: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+class ClientProfilePage extends StatefulWidget {
+  const ClientProfilePage({Key? key}) : super(key: key);
+
+  @override
+  State<ClientProfilePage> createState() => _ClientProfilePageState();
+}
+
+class _ClientProfilePageState extends State<ClientProfilePage> {
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _linkedInController = TextEditingController();
+  final TextEditingController _githubController = TextEditingController();
+  final TextEditingController _otherSocialController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
+
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
+
+  bool _isEditing = false;
+  bool _loading = true;
+
+  String _name = "";
+  String _surname = "";
+  String _location = "";
+  String _mobile = "";
+
+  int _postedJobs = 0;
+  int _completedJobs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Fetch from users table
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final userData = userDoc.data() ?? {};
+
+      setState(() {
+        _name = userData['name'] ?? "";
+        _surname = userData['surname'] ?? "";
+        _location = userData['location'] ?? "";
+        _mobile = userData['mobile'] ?? "";
+        _mobileController.text = _mobile;
+      });
+
+      // Fetch client_description (or create if missing)
+      final descRef = FirebaseFirestore.instance
+          .collection('client_description')
+          .doc(uid);
+      final descDoc = await descRef.get();
+
+      if (!descDoc.exists) {
+        await descRef.set({
+          'userId': uid,
+          'bio': '',
+          'linkedIn': null,
+          'github': null,
+          'otherSocial': null,
+          'location': _location,
+          'mobile': _mobile,
+        });
+      } else {
+        final descData = descDoc.data() ?? {};
+        _bioController.text = descData['bio'] ?? "";
+        _linkedInController.text = descData['linkedIn'] ?? "";
+        _githubController.text = descData['github'] ?? "";
+        _otherSocialController.text = descData['otherSocial'] ?? "";
+      }
+
+      // Calculate stats from jobs
+      await _calculateStats(uid);
+
+      setState(() => _loading = false);
+    } catch (e) {
+      debugPrint("Error loading profile: $e");
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _calculateStats(String uid) async {
+    // Jobs posted
+    final jobsQuery = await FirebaseFirestore.instance
+        .collection('jobRequests')
+        .where('clientId', isEqualTo: uid)
+        .get();
+
+    _postedJobs = jobsQuery.docs.length;
+
+    // Jobs completed
+    final completedJobsQuery = await FirebaseFirestore.instance
+        .collection('jobRequests')
+        .where('clientId', isEqualTo: uid)
+        .where('status', isEqualTo: 'complete')
+        .get();
+
+    _completedJobs = completedJobsQuery.docs.length;
+  }
+
+  Future<void> _saveProfile() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Update client_description
+      await FirebaseFirestore.instance
+          .collection('client_description')
+          .doc(uid)
+          .update({
+        'bio': _bioController.text,
+        'linkedIn':
+        _linkedInController.text.isEmpty ? null : _linkedInController.text,
+        'github': _githubController.text.isEmpty ? null : _githubController.text,
+        'otherSocial': _otherSocialController.text.isEmpty
+            ? null
+            : _otherSocialController.text,
+        'location': _location,
+        'mobile': _mobileController.text,
+      });
+
+      // Update mobile in users as well
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'mobile': _mobileController.text,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("✅ Profile updated successfully!"),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+      _toggleEdit();
+    } catch (e) {
+      debugPrint("Error saving profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Error updating profile: $e"),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
+  void _toggleEdit() => setState(() => _isEditing = !_isEditing);
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (pickedFile != null) {
+      setState(() => _profileImage = File(pickedFile.path));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+              ),
+              SizedBox(height: 16),
+              Text(
+                "Loading your profile...",
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "My Profile",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1976D2),
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(_isEditing ? Icons.save : Icons.edit),
+            onPressed: _isEditing ? _saveProfile : _toggleEdit,
+            color: Colors.white,
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Profile Avatar with Edit Button
+            Stack(
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Color(0xFF1976D2).withOpacity(0.2),
+                      width: 3,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: _profileImage != null
+                        ? Image.file(
+                      _profileImage!,
+                      fit: BoxFit.cover,
+                    )
+                        : Icon(
+                      Icons.person,
+                      size: 60,
+                      color: Color(0xFF1976D2).withOpacity(0.7),
+                    ),
+                  ),
+                ),
+                if (_isEditing)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1976D2),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Name and Client Tag
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "$_name $_surname",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1976D2).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "Client",
+                    style: TextStyle(
+                      color: Color(0xFF1976D2),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _location,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 16,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Stats Cards
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatCard("Posted Jobs", _postedJobs.toString(), Icons.work_outline),
+                _buildStatCard("Completed", _completedJobs.toString(), Icons.check_circle_outline),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Bio Section
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "About Me",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: _bioController,
+                    enabled: _isEditing,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: "Tell others about yourself...",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Contact Information
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Contact Information",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+
+                  // Mobile Number
+                  TextField(
+                    controller: _mobileController,
+                    enabled: _isEditing,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: "Mobile Number",
+                      prefixIcon: Icon(Icons.phone, color: Colors.grey.shade600),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // LinkedIn
+                  TextField(
+                    controller: _linkedInController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "LinkedIn",
+                      prefixIcon: Icon(Icons.link, color: Colors.grey.shade600),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // GitHub
+                  TextField(
+                    controller: _githubController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "GitHub",
+                      prefixIcon: Icon(Icons.code, color: Colors.grey.shade600),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Other Social Media
+                  TextField(
+                    controller: _otherSocialController,
+                    enabled: _isEditing,
+                    decoration: InputDecoration(
+                      labelText: "Other Social Media",
+                      prefixIcon: Icon(Icons.public, color: Colors.grey.shade600),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Edit/Save Button
+            if (!_isEditing)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _toggleEdit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF1976D2),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Edit Profile",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+
+            if (_isEditing)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _toggleEdit,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF1976D2),
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "Save Changes",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon) {
+    return Container(
+      width: 150,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 28,
+            color: Color(0xFF1976D2),
+          ),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1976D2),
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
